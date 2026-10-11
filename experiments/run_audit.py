@@ -3,7 +3,8 @@
 
 Runs the preregistered audit on a set of (capacity, seed) configurations and
 prints the diagnostic-vs-closed-loop-return table with bootstrap CIs and Holm
-adjusted p-values. The default `smoke` mode finishes in minutes on CPU.
+adjusted p-values, then emits the preregistered H1/H2/H3 verdicts. The default
+`smoke` mode finishes in minutes on CPU.
 
 Usage:
     python -m experiments.run_audit                 # smoke
@@ -23,7 +24,11 @@ import yaml
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from wm_audit.audit import evaluate_config              # noqa: E402
-from wm_audit.diagnostics import audit_correlations, prereg_decision  # noqa: E402
+from wm_audit.diagnostics import (                     # noqa: E402
+    audit_correlations,
+    prereg_decision_h1, prereg_decision_h2, prereg_decision_h3,
+    pixel_composite_scores, control_composite_scores,
+)
 
 
 def load_config(path: str) -> dict:
@@ -54,7 +59,7 @@ def main():
         for (hidden, embed) in cfg["capacities"]:
             print(f"[config] hidden={hidden} embed={embed} seed={seed} ...")
             row = evaluate_config(env_name, hidden=hidden, embed=embed,
-                                  seed=seed, cfg=cfg)
+                                 seed=seed, cfg=cfg)
             rows.append(row)
             print(f"    R_real={row['R_real']:.3f}  pixel_mse={row['pixel_mse']:.4f}  "
                   f"return_ece={row['return_ece']:.4f}  tau={row['counterfactual_tau']:.3f}")
@@ -64,23 +69,39 @@ def main():
         print("  ", {k: (round(v, 4) if isinstance(v, float) else v)
                     for k, v in r.items()})
 
+    # Preregistered composite scores (direction-unified rank composites).
+    pixel_scores = pixel_composite_scores(rows)
+    control_scores = control_composite_scores(rows)
+    for r, ps, cs in zip(rows, pixel_scores, control_scores):
+        r["pixel_composite"] = float(ps)
+        r["control_composite"] = float(cs)
+
+    corr_diagnostics = list(diagnostics) + ["pixel_composite", "control_composite"]
+
     print("\n" + "=" * 72)
     print("Diagnostic vs closed-loop return R_real  (Spearman rho + 95% bootstrap CI)")
     print("=" * 72)
-    res = audit_correlations(rows, diagnostics, return_key="R_real",
+    res = audit_correlations(rows, corr_diagnostics, return_key="R_real",
                              n_boot=cfg.get("bootstrap_resamples", 200),
                              ci=0.95, seed=0)
-    print(f"{'diagnostic':<20}{'rho':>8}{'ci_lo':>9}{'ci_hi':>9}{'p_raw':>9}{'p_adj':>9}")
+    print(f"{'diagnostic':<22}{'rho':>8}{'ci_lo':>9}{'ci_hi':>9}{'p_raw':>9}{'p_adj':>9}")
     for d, v in res.items():
-        print(f"{d:<20}{v['rho']:>8.3f}{v['ci_lo']:>9.3f}{v['ci_hi']:>9.3f}"
+        print(f"{d:<22}{v['rho']:>8.3f}{v['ci_lo']:>9.3f}{v['ci_hi']:>9.3f}"
               f"{v['p_raw']:>9.3f}{v['p_adj']:>9.3f}")
 
-    # Preregistered H1 verdict (pixel_mse as the representative pixel diagnostic)
-    decision = prereg_decision(res["pixel_mse"]["rho"], threshold=0.4)
-    print("\nPreregistered H1:")
-    print(" ", json.dumps(decision, indent=2))
+    # Preregistered verdicts.
+    h1 = prereg_decision_h1(res["pixel_composite"]["rho"], threshold=0.4)
+    h2 = prereg_decision_h2(res["control_composite"]["rho"], threshold=0.6)
+    h3 = prereg_decision_h3(rows)
 
-    out = {"rows": rows, "correlations": res, "h1": decision}
+    print("\n" + "=" * 72)
+    print("Preregistered verdicts")
+    print("=" * 72)
+    for label, dec in (("H1", h1), ("H2", h2), ("H3", h3)):
+        print(f"[{label}]")
+        print(json.dumps(dec, indent=2))
+
+    out = {"rows": rows, "correlations": res, "H1": h1, "H2": h2, "H3": h3}
     out_path = args.out or os.path.join(
         os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
         "leaderboard", "results_smoke.json")
