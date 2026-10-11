@@ -30,6 +30,11 @@ smoke:
   capacities: [[16, 16], [32, 16], [32, 32]]   # hidden, embed: distinct small/med/large
   seeds: [0, 1]
   bootstrap_resamples: 200
+  # Compression levers applied post-hoc to the trained float ensemble. Each lever
+  # adds one extra row carrying compression=<lever> on the SAME (hidden,embed,seed)
+  # triple, re-running the identical rollout battery (H3 assessability path).
+  # smoke MUST list >=1 int8 lever so the H3 assessable branch runs end-to-end in CI.
+  compression_levers: [int8]
 
 main:                                            # [IN PREPARATION]
   buffer_capacity: 200000
@@ -37,3 +42,4 @@ main:                                            # [IN PREPARATION]
   ensemble_size: 3
   train_steps: 200000
   bootstrap_resamples: 2000
+  compression_levers: []                         # enable with [int8] when main runs

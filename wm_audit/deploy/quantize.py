@@ -7,6 +7,8 @@ Channel pruning / distillation / ONNX export are extension points.
 from __future__ import annotations
 
 import copy
+import warnings
+
 import numpy as np
 import torch
 
@@ -14,8 +16,21 @@ import torch
 def quantize_dynamic_int8(model: torch.nn.Module) -> torch.nn.Module:
     qmodel = copy.deepcopy(model)
     qmodel.eval()
-    qmodel = torch.quantization.quantize_dynamic(
-        qmodel, {torch.nn.Linear}, dtype=torch.qint8)
+    # torch.ao.quantization.quantize_dynamic is deprecated upstream (removed in
+    # ~2.10, migration target: torchao). We keep it here because it is dependency
+    # free and still fully functional on the supported CPU torch line; rather
+    # than rebuild the whole quantization stack we suppress the single
+    # DeprecationWarning and pin a note. Re-point this to torchao when the
+    # installed torch drops this API.
+    with warnings.catch_warnings():
+        warnings.filterwarnings("ignore", category=DeprecationWarning)
+        # dynamic-int8 construction also emits a UserWarning that
+        # torch.quint8/qint8 tensor ctors are deprecated (pytorch#184982); same
+        # upstream-deprecation situation, same decision: keep the working path.
+        warnings.filterwarnings("ignore", category=UserWarning,
+                                message=".*torch\\.(quint8|qint8|qint32).*")
+        qmodel = torch.quantization.quantize_dynamic(
+            qmodel, {torch.nn.Linear}, dtype=torch.qint8)
     return qmodel
 
 

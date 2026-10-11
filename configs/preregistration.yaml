@@ -78,9 +78,25 @@ hypotheses:
                     rows share the exact triple, the first in row order wins
                     (deterministic); there is NO fallback to a wider key -- a
                     compression row without an exact triple match is dropped.
-                    Runs without compression rows, or whose compression rows
-                    match no exact triple (e.g. the smoke config), report
-                    H3 = not_assessable; we never fabricate the comparison."
+                    Runs with NO compression rows at all (e.g. a config whose
+                    compression_levers list is empty) report H3 = not_assessable;
+                    we never fabricate the comparison."
+    row_generation: "Compression variants are produced by the SAME pipeline that
+                     trains the float baseline (wm_audit.audit.evaluate_config):
+                     the float ensemble is trained once per (hidden, embed, seed),
+                     then for every lever in cfg['compression_levers'] the lever
+                     builder is applied post-hoc to EACH trained ensemble member
+                     (int8 = wm_audit.deploy.quantize_dynamic_int8, dynamic
+                     per-linear INT8; torch.ao deprecation warning suppressed,
+                     not rewritten). The compressed member list then runs the
+                     EXACT same rollout/diagnostic battery as the float members
+                     (pixel, uncertainty, return calibration, counterfactual
+                     tau, and closed-loop R_real), and is written as a second row
+                     carrying the identical (hidden, embed, seed) triple plus
+                     compression=<lever> (e.g. compression='int8'). The smoke
+                     config carries compression_levers=[int8], so the smoke H3
+                     path is assessable end-to-end; an empty list (e.g. the
+                     not-yet-run main config) leaves H3 honestly not_assessable."
     operationalization: "Composites, not single metrics. Pixel side = the H1
                         pixel_composite; control side = the H2 control_composite
                         (return_ece flipped, counterfactual_tau and
@@ -94,6 +110,14 @@ hypotheses:
                         strictly exceeds mean pixel-composite degradation. No
                         extra post-hoc threshold; this is the locked directional
                         test."
+
+# Ensemble convention (applied identically to float and compressed rows).
+# Pixel/uncertainty diagnostics average per-ensemble-member values across the
+# ensemble. The control battery is now on the SAME footing: return_ece is computed
+# per member on the identical matched segments and averaged, and
+# counterfactual_tau is computed per member over the identical counterfactual
+# states and averaged. Previously return_ece / counterfactual_tau silently used
+# only members[0]; that asymmetry is removed (numbers recomputed honestly).
 
 honesty:
   - "If H1 is falsified (pixel fidelity strongly predicts control), we still

@@ -58,11 +58,16 @@ def main():
     for seed in cfg["seeds"]:
         for (hidden, embed) in cfg["capacities"]:
             print(f"[config] hidden={hidden} embed={embed} seed={seed} ...")
-            row = evaluate_config(env_name, hidden=hidden, embed=embed,
-                                 seed=seed, cfg=cfg)
-            rows.append(row)
-            print(f"    R_real={row['R_real']:.3f}  pixel_mse={row['pixel_mse']:.4f}  "
-                  f"return_ece={row['return_ece']:.4f}  tau={row['counterfactual_tau']:.3f}")
+            # evaluate_config returns [float baseline, <compressed variant rows>...]
+            new_rows = evaluate_config(env_name, hidden=hidden, embed=embed,
+                                       seed=seed, cfg=cfg)
+            for row in new_rows:
+                tag = row.get("compression", "float")
+                print(f"    [{tag:>5}] R_real={row['R_real']:.3f}  "
+                      f"pixel_mse={row['pixel_mse']:.4f}  "
+                      f"return_ece={row['return_ece']:.4f}  "
+                      f"tau={row['counterfactual_tau']:.3f}")
+            rows.extend(new_rows)
 
     print("\nRows collected:")
     for r in rows:

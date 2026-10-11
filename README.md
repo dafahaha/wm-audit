@@ -36,6 +36,14 @@ states into one two-sample series and compute a single tie-aware Kendall-τb
 between oracle and imagined rewards. It is **not** a per-state sign-agreement
 rate / fraction of states where the two actions are ordered correctly.
 
+**Ensemble convention (consistent).** The pixel and uncertainty diagnostics
+already averaged per-member values across the ensemble. The control battery
+(`return_ece`, `counterfactual_tau`) is now on the same footing: each is computed
+*per member* on the identical segments/states and averaged across members, rather
+than silently using only the lead member. Compressed rows (e.g. INT8) are the
+same ensemble run through the same battery; `H3` pairs each INT8 row with its
+float baseline on the exact `(hidden, embed, seed)` triple.
+
 ## Preregistered hypotheses (see `configs/preregistration.yaml`)
 
 - **H1** — pixel fidelity *weakly* predicts closed-loop return:
