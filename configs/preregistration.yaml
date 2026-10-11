@@ -47,7 +47,14 @@ hypotheses:
     question: "RQ2: Which control-relevant diagnostics predict closed-loop utility?"
     diagnostics:
       - return_ece                  # imagined vs real return calibration
-      - counterfactual_tau         # (s,a1,a2) action ordering agreement
+      - counterfactual_tau         # global pooled Kendall-tau-b over ALL (state,
+                                   # action) triples: two candidate actions are
+                                   # stepped in the oracle env and through the
+                                   # model per state, then every (state, action)
+                                   # reward pair is pooled into ONE series and a
+                                   # single tie-aware Kendall-tau-b is computed.
+                                   # NOT a per-state fraction of correct action
+                                   # orderings (sign-agreement rate).
       - uncertainty_rho             # ensemble dispersion vs true error alignment
     composite_recipe: "same direction-unified rank composite as H1; return_ece
                        rank-flipped (lower = better), counterfactual_tau and

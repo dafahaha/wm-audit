@@ -27,6 +27,13 @@ all preregistered before seeing data.
 | Control | `return_ece`, `counterfactual_tau` | imagined-vs-real return calibration; (s,a1,a2) action ordering |
 | Uncertainty | `uncertainty_rho`, `uncertainty_ece` | does ensemble dispersion track the true error? |
 
+`counterfactual_tau` is operationalized as the **global pooled Kendall-τb**: at
+each sampled state we step two candidate actions in the oracle env and through
+the model (one-step rewards), then pool *all* `(state, action)` triples across
+states into one two-sample series and compute a single tie-aware Kendall-τb
+between oracle and imagined rewards. It is **not** a per-state sign-agreement
+rate / fraction of states where the two actions are ordered correctly.
+
 ## Preregistered hypotheses (see `configs/preregistration.yaml`)
 
 - **H1** — pixel fidelity *weakly* predicts closed-loop return:
@@ -103,7 +110,7 @@ numbers in this repo are an MVP smoke run, not a main result.)
   Simulators.* RSS 2026 Workshop on Robot World Models. arXiv:2607.07196.
 - **Biased Dreams** — J. Berger, B. Frauenknecht, S. Trimpe, B. Leibe.
   *Biased Dreams: Limitations to Epistemic Uncertainty Quantification in Latent
-  Dynamics Models.* RLC 2026. arXiv:2604.25416.
+  Space Models.* RLC 2026. arXiv:2604.25416.
 - **stable-worldmodel** — L. Maes et al., incl. Y. LeCun, R. Balestriero.
   *stable-worldmodel: A Platform for Reproducible World Modeling Research and
   Evaluation.* arXiv:2605.21800.
