@@ -19,7 +19,8 @@ jobs:
           python -m pip install --upgrade pip
           pip install numpy pyyaml pytest
           pip install torch --index-url https://download.pytorch.org/whl/cpu
+          pip install -e . --no-deps
       - name: Unit + smoke tests
-        run: pytest -v
+        run: python -m pytest -v
       - name: End-to-end audit smoke
         run: python -m experiments.run_audit --mode smoke
