@@ -1,0 +1,39 @@
+# Audit run configuration. The `smoke` block is what CI runs (CPU, minutes).
+env: pixel_nav
+diagnostics:
+  - pixel_mse
+  - pixel_ssim
+  - pixel_nll
+  - pixel_lpips
+  - rollout_fvd
+  - return_ece
+  - counterfactual_tau
+  - uncertainty_rho
+  - uncertainty_ece
+return_key: R_real
+
+smoke:
+  buffer_capacity: 4000
+  collect_steps: 3000
+  data_seed: 123
+  ensemble_size: 2
+  train_steps: 150
+  batch_size: 64
+  lr: 0.002
+  calib_segments: 24
+  calib_horizon: 8
+  cf_pairs: 40
+  cem_horizon: 6
+  cem_candidates: 48
+  cem_elites: 8
+  cem_iters: 2
+  capacities: [[16, 16], [32, 16], [16, 16]]   # hidden, embed
+  seeds: [0, 1]
+  bootstrap_resamples: 200
+
+main:                                            # [IN PREPARATION]
+  buffer_capacity: 200000
+  collect_steps: 100000
+  ensemble_size: 3
+  train_steps: 200000
+  bootstrap_resamples: 2000

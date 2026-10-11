@@ -1,0 +1,8 @@
+# Extension path (heavy dependency). Not installed in CI; needs
+# `pip install -e .[dm_control]` (MuJoCo). Pixel observations 64x64.
+name: dm_control.cartpole_swingup
+domain: cartpole
+task: swingup
+size: 64
+action_repeat: 2
+status: extension_path  # [IN PREPARATION]

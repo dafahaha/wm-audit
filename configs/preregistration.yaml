@@ -1,0 +1,47 @@
+# WM-Audit Preregistration
+# Locked before running the main experiment. Do not tune thresholds after seeing
+# results; deviations must be documented as deviations in the paper.
+# Status: PREREGISTERED (MVP smoke). Main-experiment numbers are [IN PREPARATION].
+
+study: "What You Imagine Is Not What You Get"
+version: "v1-mvp"
+locked: true
+alpha: 0.05
+correction: holm_bonferroni        # step-down, family = all reported diagnostics
+ci: 0.95
+bootstrap_resamples: 2000
+
+# Sample size
+sample_size:
+  mvp_configs_per_arm: 3            # MVP smoke: tiny
+  main_goal_seeds: 5                # main paper target
+  main_goal_capacities: 3           # small / med / large
+  main_goal_envs: 2                 # PixelNav (light) + dm_control.cartpole_swingup
+
+hypotheses:
+  H1:
+    question: "RQ1: Does pixel fidelity track closed-loop control utility?"
+    diagnostic: "mean pixel diagnostics (mse/ssim/nll/lpips/fvd)"
+    prediction: "weak correlation"
+    threshold: 0.4                   # support H1 if |rho(pixel, R_real)| < 0.4
+    direction: null_result_tolerant
+
+  H2:
+    question: "RQ2: Which control-relevant diagnostics predict closed-loop utility?"
+    diagnostics:
+      - return_ece                  # imagined vs real return calibration
+      - counterfactual_tau         # (s,a1,a2) action ordering agreement
+      - uncertainty_rho             # ensemble dispersion vs true error alignment
+    prediction: "strong correlation"
+    threshold: 0.6                   # support H2 if rho > 0.6
+
+  H3:
+    question: "RQ3: How does compression change fidelity->utility?"
+    levers: [int8, channel_prune, distill]
+    prediction: "pixel fidelity degrades slowly; return calibration and uncertainty
+                 alignment degrade faster under compression."
+
+honesty:
+  - "If H1 is falsified (pixel fidelity strongly predicts control), we still
+     publish -- it is a bounded/null result."
+  - "All thresholds, sample size, and correction are set here, before seeing data."

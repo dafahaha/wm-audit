@@ -1,0 +1,11 @@
+# Dreamer-lite RSSM capacity tiers. The smoke uses the tiny tiers below; the
+# main experiment scales them up on a single GPU.
+architecture: dreamer_lite
+capacity:
+  small: {hidden: 16, embed: 16}
+  med:   {hidden: 32, embed: 32}
+  large: {hidden: 64, embed: 64}
+# smoke overrides (CI)
+smoke:
+  small: {hidden: 16, embed: 16}
+  med:   {hidden: 32, embed: 16}

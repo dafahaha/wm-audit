@@ -1,0 +1,5 @@
+# Built-in lightweight env used by CI / smoke. Deterministic, CPU-only.
+name: pixel_nav
+size: 16
+max_steps: 50
+action_dim: 2

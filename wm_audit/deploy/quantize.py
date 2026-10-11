@@ -1,0 +1,37 @@
+"""Compression / deployment axis (RQ3): INT8 quantization of a trained WM.
+
+Thin wrapper around ``torch.quantization`` dynamic INT8 plus a parity check:
+the compressed model's forward must match the float model within a tolerance.
+Channel pruning / distillation / ONNX export are extension points.
+"""
+from __future__ import annotations
+
+import copy
+import numpy as np
+import torch
+
+
+def quantize_dynamic_int8(model: torch.nn.Module) -> torch.nn.Module:
+    qmodel = copy.deepcopy(model)
+    qmodel.eval()
+    qmodel = torch.quantization.quantize_dynamic(
+        qmodel, {torch.nn.Linear}, dtype=torch.qint8)
+    return qmodel
+
+
+def forward_parity(float_model: torch.nn.Module, q_model: torch.nn.Module,
+                   obs_shape, action_dim: int, n: int = 8,
+                   atol: float = 1e-1, seed: int = 0) -> dict:
+    """Compare float vs INT8 forward on random (obs, action). Returns max abs
+    output difference and whether it is within ``atol``."""
+    rng = np.random.default_rng(seed)
+    obs = torch.tensor(rng.random((n,) + tuple(obs_shape)), dtype=torch.float32)
+    act = torch.tensor(rng.uniform(-1, 1, size=(n, action_dim)), dtype=torch.float32)
+    h_f = float_model.init_state(n)
+    h_q = q_model.init_state(n)
+    flat = obs.reshape(n, -1)
+    with torch.no_grad():
+        out_f = float_model.step(flat, act, h_f)[0]
+        out_q = q_model.step(flat, act, h_q)[0]
+    max_diff = float(torch.max(torch.abs(out_f - out_q)))
+    return {"max_abs_diff": max_diff, "within_tol": bool(max_diff <= atol), "atol": atol}

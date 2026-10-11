@@ -1,0 +1,25 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install light deps (CPU torch)
+        run: |
+          python -m pip install --upgrade pip
+          pip install numpy pyyaml pytest
+          pip install torch --index-url https://download.pytorch.org/whl/cpu
+      - name: Unit + smoke tests
+        run: pytest -v
+      - name: End-to-end audit smoke
+        run: python -m experiments.run_audit --mode smoke

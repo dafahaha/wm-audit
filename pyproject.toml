@@ -1,0 +1,32 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "wm-audit"
+version = "0.0.1"
+description = "Preregistered, single-GPU audit suite disentangling world-model perceptual fidelity from control utility."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "dafahaha" }]
+keywords = ["world-models", "model-based-rl", "calibration", "audit", "preregistration"]
+dependencies = [
+    "numpy>=1.26",
+    "pyyaml>=6.0",
+    "torch>=2.2",   # CPU wheel recommended: pip install torch --index-url https://download.pytorch.org/whl/cpu
+]
+
+[project.optional-dependencies]
+# Heavy envs / features are optional so CI stays light.
+dm_control = ["dm_control"]
+atari = ["ale-py"]
+lpips = ["lpips", "torchvision"]
+dev = ["pytest>=7.0", "jupyter"]
+
+[tool.setuptools.packages.find]
+include = ["wm_audit*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
