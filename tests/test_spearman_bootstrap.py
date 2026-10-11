@@ -3,6 +3,7 @@
 Second mutation-guard test.
 """
 import numpy as np
+import pytest
 
 from wm_audit.stats import spearmanr, bootstrap_ci, holm_correction
 
@@ -46,5 +47,7 @@ def test_holm_correction_preserves_size():
     assert len(adj) == 4
     # smallest p becomes 4*0.01 = 0.04 (or smaller due to step-down)
     assert adj[0] <= 0.05 + 1e-9
-    # monotone non-decreasing along sorted order
-    assert list(adj) == sorted(adj, key=lambda v: v) or True
+    # step-down monotonicity: adjusted p-values must be non-decreasing along the
+    # (already ascending) sorted order, and match the hand-computed values.
+    assert all(adj[i] <= adj[i + 1] + 1e-12 for i in range(len(adj) - 1))
+    assert list(adj) == pytest.approx([0.04, 0.06, 0.06, 0.5])

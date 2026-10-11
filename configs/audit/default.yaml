@@ -27,7 +27,7 @@ smoke:
   cem_candidates: 48
   cem_elites: 8
   cem_iters: 2
-  capacities: [[16, 16], [32, 16], [16, 16]]   # hidden, embed
+  capacities: [[16, 16], [32, 16], [32, 32]]   # hidden, embed: distinct small/med/large
   seeds: [0, 1]
   bootstrap_resamples: 200
 

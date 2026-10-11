@@ -88,6 +88,26 @@ Two tests are deliberately wired so that a broken implementation turns them red:
 with systematic offset) and `test_spearman_bootstrap.py::test_bootstrap_ci_covers_known_truth`.
 We verified both go red when the underlying math is broken.
 
+## References
+
+WM-Audit is a measurement layer on top of the following world models and
+recent audit-adjacent work. (IDs verified against arXiv abstract pages; the
+numbers in this repo are an MVP smoke run, not a main result.)
+
+- **DreamerV3** — D. Hafner, J. Pasukonis, J. Ba, T. Lillicrap.
+  *Mastering Diverse Domains through World Models.* arXiv:2301.04104.
+- **TD-MPC2** — N. Hansen, H. Su, X. Wang.
+  *TD-MPC2: Scalable, Robust World Models for Continuous Control.* arXiv:2310.16828.
+- **Validate the Dream** — C. Oefinger et al.
+  *Validate the Dream Before You Trust Its Verdict: Admissibility for World-Model
+  Simulators.* RSS 2026 Workshop on Robot World Models. arXiv:2607.07196.
+- **Biased Dreams** — J. Berger, B. Frauenknecht, S. Trimpe, B. Leibe.
+  *Biased Dreams: Limitations to Epistemic Uncertainty Quantification in Latent
+  Dynamics Models.* RLC 2026. arXiv:2604.25416.
+- **stable-worldmodel** — L. Maes et al., incl. Y. LeCun, R. Balestriero.
+  *stable-worldmodel: A Platform for Reproducible World Modeling Research and
+  Evaluation.* arXiv:2605.21800.
+
 ## License
 
 MIT — see [LICENSE](LICENSE).

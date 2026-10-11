@@ -5,7 +5,8 @@ capacity:
   small: {hidden: 16, embed: 16}
   med:   {hidden: 32, embed: 32}
   large: {hidden: 64, embed: 64}
-# smoke overrides (CI)
+# smoke overrides (CI): three distinct tiers so the capacity axis is real
 smoke:
   small: {hidden: 16, embed: 16}
   med:   {hidden: 32, embed: 16}
+  large: {hidden: 32, embed: 32}
