@@ -64,6 +64,18 @@ hypotheses:
                     (hidden, seed). Runs without compression rows (e.g. the smoke
                     config) report H3 = not_assessable; we never fabricate the
                     comparison."
+    operationalization: "Composites, not single metrics. Pixel side = the H1
+                        pixel_composite; control side = the H2 control_composite
+                        (return_ece flipped, counterfactual_tau and
+                        uncertainty_rho ascending). For each compression row
+                        matched to its float baseline by (hidden, seed), paired
+                        degradation = float_composite - compressed_composite on
+                        each side (both composites are 'higher is better', so a
+                        positive value = a real degradation). Average over all
+                        matched pairs. H3 supported iff mean control-composite
+                        degradation strictly exceeds mean pixel-composite
+                        degradation. No extra post-hoc threshold; this is the
+                        locked directional test."
 
 honesty:
   - "If H1 is falsified (pixel fidelity strongly predicts control), we still

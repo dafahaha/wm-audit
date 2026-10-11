@@ -115,36 +115,121 @@ def test_h2_negative_rho_not_supported():
 
 # --- H3 verdict ---------------------------------------------------------------
 
+def _full_row(hidden, seed, compression=None, *,
+              mse, ssim, nll, lpips, fvd, ece, tau, unc_rho):
+    """A complete diagnostics row (all 5 pixel + all 3 control keys) so the
+    H1/H2 rank composites are well-defined."""
+    row = {
+        "hidden": hidden, "seed": seed,
+        "pixel_mse": mse, "pixel_ssim": ssim, "pixel_nll": nll,
+        "pixel_lpips": lpips, "rollout_fvd": fvd,
+        "return_ece": ece, "counterfactual_tau": tau,
+        "uncertainty_rho": unc_rho,
+    }
+    if compression is not None:
+        row["compression"] = compression
+    return row
+
+
 def test_h3_not_assessable_without_compression_rows():
     rows = [
-        {"hidden": 16, "seed": 0, "pixel_mse": 0.01, "return_ece": 1.0},
-        {"hidden": 32, "seed": 1, "pixel_mse": 0.02, "return_ece": 2.0},
+        _full_row(16, 0, mse=0.01, ssim=0.9, nll=0.1, lpips=0.1, fvd=0.1,
+                  ece=1.0, tau=0.9, unc_rho=0.9),
+        _full_row(32, 1, mse=0.02, ssim=0.8, nll=0.2, lpips=0.2, fvd=0.2,
+                  ece=2.0, tau=0.8, unc_rho=0.8),
     ]
     d = prereg_decision_h3(rows)
     assert d["status"] == "not_assessable"
     assert "compression" in d["reason"].lower() or "undefined" in d["reason"].lower()
 
 
-def test_h3_assessable_control_degrades_faster():
+def test_h3_not_assessable_when_compression_row_has_no_matched_baseline():
+    # comp row on hidden=64, but no float baseline at (hidden=64, seed=0).
     rows = [
-        {"hidden": 16, "seed": 0, "pixel_mse": 0.01, "return_ece": 1.0},
-        {"hidden": 16, "seed": 0, "compression": "int8",
-         "pixel_mse": 0.011, "return_ece": 3.0},  # pixel +10%, control +200%
+        _full_row(16, 0, mse=1.0, ssim=0.9, nll=1.0, lpips=0.1, fvd=0.1,
+                  ece=1.0, tau=0.9, unc_rho=0.9),
+        _full_row(64, 0, compression="int8",
+                  mse=1.0, ssim=0.9, nll=1.0, lpips=0.1, fvd=0.1,
+                  ece=3.0, tau=0.1, unc_rho=0.1),
+    ]
+    d = prereg_decision_h3(rows)
+    assert d["status"] == "not_assessable"
+    assert "baseline" in d["reason"].lower()
+
+
+def test_h3_assessable_control_degrades_faster():
+    # Float F is best-on-everything. Compressed C keeps pixel IDENTICAL to F
+    # (no pixel degradation) but worsens all three control diagnostics.
+    rows = [
+        _full_row(16, 0, mse=1.0, ssim=0.9, nll=1.0, lpips=0.1, fvd=0.1,
+                  ece=1.0, tau=0.9, unc_rho=0.9),                 # F float
+        _full_row(16, 0, compression="int8",
+                  mse=1.0, ssim=0.9, nll=1.0, lpips=0.1, fvd=0.1,
+                  ece=3.0, tau=0.1, unc_rho=0.1),               # C compressed
     ]
     d = prereg_decision_h3(rows)
     assert d["status"] == "assessable"
+    assert d["n_pairs"] == 1
+    # pixel composites tied (identical) -> pixel degradation 0.0
+    assert d["pixel_composite_degradation"] == pytest.approx(0.0)
+    # control: F rank 2 on all three, C rank 1 on all three -> deg = 2.0-1.0 = 1.0
+    assert d["control_composite_degradation"] == pytest.approx(1.0)
     assert d["supports_H3"] is True
-    assert d["control_relative_degradation"] > d["pixel_relative_degradation"]
 
 
 def test_h3_not_supported_when_pixel_degrades_faster():
+    # C worsens ALL five pixel diagnostics but keeps control identical to F.
     rows = [
-        {"hidden": 16, "seed": 0, "pixel_mse": 0.01, "return_ece": 1.0},
-        {"hidden": 16, "seed": 0, "compression": "int8",
-         "pixel_mse": 0.03, "return_ece": 1.1},   # pixel +200%, control +10%
+        _full_row(16, 0, mse=1.0, ssim=0.9, nll=1.0, lpips=0.1, fvd=0.1,
+                  ece=1.0, tau=0.9, unc_rho=0.9),                 # F float
+        _full_row(16, 0, compression="int8",
+                  mse=3.0, ssim=0.1, nll=3.0, lpips=0.3, fvd=0.3,
+                  ece=1.0, tau=0.9, unc_rho=0.9),               # C compressed
     ]
     d = prereg_decision_h3(rows)
     assert d["status"] == "assessable"
+    # control tied -> 0.0; pixel F=2.0 C=1.0 -> deg 1.0
+    assert d["control_composite_degradation"] == pytest.approx(0.0)
+    assert d["pixel_composite_degradation"] == pytest.approx(1.0)
+    assert d["supports_H3"] is False
+
+
+def test_h3_control_side_includes_uncertainty_rho_and_tau_not_just_ece():
+    # return_ece is IDENTICAL between F and C (ece-only would show zero control
+    # degradation), but uncertainty_rho and counterfactual_tau degrade. The H2
+    # control composite must still register a control degradation.
+    rows = [
+        _full_row(16, 0, mse=1.0, ssim=0.9, nll=1.0, lpips=0.1, fvd=0.1,
+                  ece=1.0, tau=0.9, unc_rho=0.9),                 # F float
+        _full_row(16, 0, compression="int8",
+                  mse=1.0, ssim=0.9, nll=1.0, lpips=0.1, fvd=0.1,
+                  ece=1.0, tau=0.1, unc_rho=0.1),               # C: ece same, tau/unc worse
+    ]
+    d = prereg_decision_h3(rows)
+    assert d["status"] == "assessable"
+    assert d["pixel_composite_degradation"] == pytest.approx(0.0)
+    # ece tied -> rank 1.5 each; tau/unc F=2 C=1. control F=(1.5+2+2)/3, C=(1.5+1+1)/3
+    expected = ((1.5 + 2 + 2) - (1.5 + 1 + 1)) / 3.0
+    assert d["control_composite_degradation"] == pytest.approx(expected)
+    assert d["control_composite_degradation"] > 0.0   # rho/tu NOT dropped
+    assert d["supports_H3"] is True
+
+
+def test_h3_pixel_side_uses_composite_not_pixel_mse_alone():
+    # mSE alone says C degraded (1.0 -> 1.1), but ssim compensates (0.5 -> 0.9)
+    # and nll/lpips/fvd are tied. The pixel COMPOSITE is unchanged -> pixel
+    # degradation 0.0. Control is tied -> control degradation 0.0.
+    rows = [
+        _full_row(16, 0, mse=1.0, ssim=0.5, nll=1.0, lpips=0.1, fvd=0.1,
+                  ece=1.0, tau=0.9, unc_rho=0.9),                 # F float
+        _full_row(16, 0, compression="int8",
+                  mse=1.1, ssim=0.9, nll=1.0, lpips=0.1, fvd=0.1,
+                  ece=1.0, tau=0.9, unc_rho=0.9),               # C: mse worse, ssim better
+    ]
+    d = prereg_decision_h3(rows)
+    assert d["status"] == "assessable"
+    assert d["pixel_composite_degradation"] == pytest.approx(0.0)
+    assert d["control_composite_degradation"] == pytest.approx(0.0)
     assert d["supports_H3"] is False
 
 

@@ -199,8 +199,31 @@ def prereg_decision_h3(rows: List[dict],
     """H3: under compression, pixel fidelity degrades slowly while return
     calibration and uncertainty alignment degrade faster.
 
-    If the run contains no compression rows, the verdict is honestly
-    ``not_assessable`` -- we never fabricate a compression comparison.
+    Operationalization (faithful to the preregistered composite recipe, see the
+    "Composite diagnostics" note in ``configs/preregistration.yaml``):
+
+      * Pixel side = the H1 ``pixel_composite`` (direction-unified rank mean of
+        the five pixel diagnostics).
+      * Control side = the H2 ``control_composite`` (direction-unified rank mean
+        of ``return_ece`` (flipped), ``counterfactual_tau`` and
+        ``uncertainty_rho`` ascending).
+      * For every compression row, match the float baseline by ``(hidden,
+        seed)``. Because both composites are "higher is better" oriented ranks,
+        the degradation of a compressed row relative to its matched float
+        baseline is
+
+            degradation = float_composite - compressed_composite
+
+        (a positive value means the compressed model scored worse, i.e. it
+        degraded). We average this paired loss over all matched (hidden, seed)
+        pairs separately on the pixel and control composites.
+      * H3 is supported iff the mean control-composite degradation strictly
+        exceeds the mean pixel-composite degradation. This is the preregistered
+        directional claim -- no extra post-hoc threshold is introduced.
+
+    If the run contains no compression rows (or none matches a float baseline),
+    the verdict is honestly ``not_assessable`` -- we never fabricate the
+    comparison.
     """
     comp_rows = [r for r in rows if r.get(compression_key)]
     base = {
@@ -217,22 +240,27 @@ def prereg_decision_h3(rows: List[dict],
         )
         return base
 
+    # Reuse the exact H1/H2 composites over the whole configuration set (the
+    # rank recipe is defined "within the configuration set"), then read the
+    # per-row score off. Both are "higher is better".
+    pixel_scores = pixel_composite_scores(rows)
+    control_scores = control_composite_scores(rows)
+
     pixel_delta: List[float] = []
     control_delta: List[float] = []
-    for r in comp_rows:
-        # matched float baseline = same (hidden, seed), uncompressed
-        b = next((x for x in rows
-                  if not x.get(compression_key)
-                  and x.get("hidden") == r.get("hidden")
-                  and x.get("seed") == r.get("seed")), None)
-        if b is None:
+    for i, r in enumerate(rows):
+        if not r.get(compression_key):
             continue
-        pixel_delta.append(abs(r["pixel_mse"] - b["pixel_mse"])
-                           / (abs(b["pixel_mse"]) + 1e-12))
-        control_delta.append(
-            abs(r["return_ece"] - b["return_ece"])
-            / (abs(b["return_ece"]) + 1e-12)
-        )
+        # matched float baseline = same (hidden, seed), uncompressed
+        b_idx = next((j for j, x in enumerate(rows)
+                      if not x.get(compression_key)
+                      and x.get("hidden") == r.get("hidden")
+                      and x.get("seed") == r.get("seed")), None)
+        if b_idx is None:
+            continue
+        # degradation = float_composite - compressed_composite (positive => worse)
+        pixel_delta.append(float(pixel_scores[b_idx] - pixel_scores[i]))
+        control_delta.append(float(control_scores[b_idx] - control_scores[i]))
     if not pixel_delta:
         base["status"] = "not_assessable"
         base["reason"] = (
@@ -247,13 +275,15 @@ def prereg_decision_h3(rows: List[dict],
     base.update({
         "status": "assessable",
         "compression_lever": comp_rows[0].get(compression_key),
-        "pixel_relative_degradation": pixel_deg,
-        "control_relative_degradation": control_deg,
+        "n_pairs": len(pixel_delta),
+        "pixel_composite_degradation": pixel_deg,
+        "control_composite_degradation": control_deg,
         "supports_H3": support,
-        "note": ("H3 supported: control/calibration degradation exceeds pixel "
-                 "degradation under compression."
+        "note": ("H3 supported: control/calibration composite degradation "
+                 "exceeds pixel composite degradation under compression."
                  if support else
-                 "H3 NOT supported: pixel degradation is not slower than "
-                 "control/calibration degradation under compression."),
+                 "H3 NOT supported: pixel composite degradation is not slower "
+                 "than control/calibration composite degradation under "
+                 "compression."),
     })
     return base
