@@ -116,11 +116,14 @@ def test_h2_negative_rho_not_supported():
 # --- H3 verdict ---------------------------------------------------------------
 
 def _full_row(hidden, seed, compression=None, *,
-              mse, ssim, nll, lpips, fvd, ece, tau, unc_rho):
+              embed=None, mse, ssim, nll, lpips, fvd, ece, tau, unc_rho):
     """A complete diagnostics row (all 5 pixel + all 3 control keys) so the
-    H1/H2 rank composites are well-defined."""
+    H1/H2 rank composites are well-defined. ``embed`` defaults to None so the
+    older (hidden, seed)-only fixtures keep working; the H3 match requires the
+    exact (hidden, embed, seed) triple, and None == None when both sides omit
+    embed."""
     row = {
-        "hidden": hidden, "seed": seed,
+        "hidden": hidden, "embed": embed, "seed": seed,
         "pixel_mse": mse, "pixel_ssim": ssim, "pixel_nll": nll,
         "pixel_lpips": lpips, "rollout_fvd": fvd,
         "return_ece": ece, "counterfactual_tau": tau,
@@ -155,6 +158,58 @@ def test_h3_not_assessable_when_compression_row_has_no_matched_baseline():
     d = prereg_decision_h3(rows)
     assert d["status"] == "not_assessable"
     assert "baseline" in d["reason"].lower()
+
+
+def test_h3_matches_float_baseline_by_embed_not_hidden_seed_only():
+    # Regression guard for the (hidden, seed) mis-pairing bug: capacity tiers
+    # [[16,16],[32,16],[32,32]] put two DIFFERENT embeds on hidden=32. The int8
+    # row (hidden=32, embed=32) must pair with the float (hidden=32, embed=32)
+    # baseline -- NOT with the first float row that merely shares
+    # (hidden=32, seed).
+    #
+    # Construction: the int8 row is IDENTICAL to the embed=32 float on every
+    # diagnostic, while the embed=16 float is best-on-everything. A correct
+    # (hidden, embed, seed) match -> degradation 0.0 on both sides. The old
+    # (hidden, seed) match would have paired the int8 row with the embed=16
+    # float -> degradation > 0.0. This test goes red if embed drops out of the
+    # match key.
+    rows = [
+        _full_row(32, 0, embed=16,
+                  mse=1.0, ssim=0.9, nll=1.0, lpips=0.1, fvd=0.1,
+                  ece=1.0, tau=0.9, unc_rho=0.9),   # float (32, embed=16): best
+        _full_row(32, 0, embed=32,
+                  mse=2.0, ssim=0.5, nll=2.0, lpips=0.2, fvd=0.2,
+                  ece=2.0, tau=0.5, unc_rho=0.5),   # float (32, embed=32): mid
+        _full_row(32, 0, embed=32, compression="int8",
+                  mse=2.0, ssim=0.5, nll=2.0, lpips=0.2, fvd=0.2,
+                  ece=2.0, tau=0.5, unc_rho=0.5),   # int8 (32, embed=32): == float32
+    ]
+    d = prereg_decision_h3(rows)
+    assert d["status"] == "assessable"
+    assert d["n_pairs"] == 1
+    # paired against its identical embed=32 float -> zero degradation each side
+    assert d["pixel_composite_degradation"] == pytest.approx(0.0)
+    assert d["control_composite_degradation"] == pytest.approx(0.0)
+    assert d["supports_H3"] is False
+
+
+def test_h3_no_exact_embed_triple_does_not_fall_back_to_wider_key():
+    # The int8 row (hidden=32, embed=32, seed=0) exists and the only float
+    # baseline shares (hidden=32, seed=0) -- but at embed=16. The exact
+    # (hidden, embed, seed) triple has NO float match. Verdict must be
+    # not_assessable: the old (hidden, seed) code would have silently paired
+    # with the embed=16 baseline and fabricated a comparison.
+    rows = [
+        _full_row(32, 0, embed=16,
+                  mse=1.0, ssim=0.9, nll=1.0, lpips=0.1, fvd=0.1,
+                  ece=1.0, tau=0.9, unc_rho=0.9),   # float (32, embed=16)
+        _full_row(32, 0, embed=32, compression="int8",
+                  mse=2.0, ssim=0.5, nll=2.0, lpips=0.2, fvd=0.2,
+                  ece=3.0, tau=0.1, unc_rho=0.1),   # int8 (32, embed=32)
+    ]
+    d = prereg_decision_h3(rows)
+    assert d["status"] == "not_assessable"
+    assert "(hidden, embed, seed)" in d["reason"]
 
 
 def test_h3_assessable_control_degrades_faster():

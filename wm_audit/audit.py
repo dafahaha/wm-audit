@@ -146,7 +146,10 @@ def evaluate_config(env_name: str, hidden: int, embed: int, seed: int,
                              base_seed=seed)
 
     data = buffer.all()
-    row = {"hidden": hidden, "seed": seed}
+    # embed is recorded alongside hidden/seed: the H3 compression-parity match
+    # requires the exact (hidden, embed, seed) triple, because the capacity
+    # tiers put two different embeds on the same hidden size.
+    row = {"hidden": hidden, "embed": embed, "seed": seed}
     row.update(_perceptual_on_buffer(members, data["obs"], data["action"], data["next_obs"]))
     row.update(_uncertainty_on_buffer(members, data["obs"], data["action"], data["next_obs"]))
     row.update(_return_calibration(env, members,

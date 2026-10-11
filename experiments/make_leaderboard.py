@@ -25,7 +25,10 @@ def main():
         lines = ["| diagnostic | Spearman rho vs R_real | 95% CI | Holm-adj p |",
                  "|---|---|---|---|"]
         for d, v in corr.items():
-            lines.append(f"| {d} | {v['rho']:.3f} | "
+            # Mark the fixed-filter stand-ins so they are never read as real
+            # learned LPIPS / FVD (see README diagnostic table footnote).
+            label = d + ("†" if d in ("pixel_lpips", "rollout_fvd") else "")
+            lines.append(f"| {label} | {v['rho']:.3f} | "
                          f"[{v['ci_lo']:.3f}, {v['ci_hi']:.3f}] | {v['p_adj']:.3f} |")
         table = "\n".join(lines)
     md = (
@@ -34,7 +37,11 @@ def main():
         "utility? Lower on pixel metrics = better fidelity.\n\n"
         "_Status: smoke / [IN PREPARATION]. Main results pending multi-seed, "
         "multi-env runs._\n\n"
-        + table + "\n"
+        + table + "\n\n"
+        "_† `pixel_lpips` / `rollout_fvd` are fixed-filter stand-ins (deterministic "
+        "`FixedFilterFeatures` bank), not the learned VGG/AlexNet trunk behind "
+        "real LPIPS / the feature distribution behind real FVD: real, "
+        "reproducible distances, but not publication-grade LPIPS/FVD._\n"
     )
     with open(out_path, "w", encoding="utf-8") as f:
         f.write(md)

@@ -68,21 +68,32 @@ hypotheses:
     prediction: "pixel fidelity degrades slowly; return calibration and uncertainty
                  alignment degrade faster under compression."
     assessability: "requires compression-tagged rows matched to float baselines by
-                    (hidden, seed). Runs without compression rows (e.g. the smoke
-                    config) report H3 = not_assessable; we never fabricate the
-                    comparison."
+                    the EXACT triple (hidden, embed, seed) -- same hidden AND same
+                    embed AND same seed. Matching on (hidden, seed) alone is a
+                    known mis-pairing: the capacity tiers
+                    [[16,16],[32,16],[32,32]] put two different embeds on
+                    hidden=32, so (hidden, seed) alone would silently pair the
+                    int8 (hidden=32, embed=32) row with the wrong
+                    (hidden=32, embed=16) float baseline. If several uncompressed
+                    rows share the exact triple, the first in row order wins
+                    (deterministic); there is NO fallback to a wider key -- a
+                    compression row without an exact triple match is dropped.
+                    Runs without compression rows, or whose compression rows
+                    match no exact triple (e.g. the smoke config), report
+                    H3 = not_assessable; we never fabricate the comparison."
     operationalization: "Composites, not single metrics. Pixel side = the H1
                         pixel_composite; control side = the H2 control_composite
                         (return_ece flipped, counterfactual_tau and
                         uncertainty_rho ascending). For each compression row
-                        matched to its float baseline by (hidden, seed), paired
-                        degradation = float_composite - compressed_composite on
-                        each side (both composites are 'higher is better', so a
-                        positive value = a real degradation). Average over all
-                        matched pairs. H3 supported iff mean control-composite
-                        degradation strictly exceeds mean pixel-composite
-                        degradation. No extra post-hoc threshold; this is the
-                        locked directional test."
+                        matched to its float baseline by the exact
+                        (hidden, embed, seed) triple, paired degradation =
+                        float_composite - compressed_composite on each side (both
+                        composites are 'higher is better', so a positive value =
+                        a real degradation). Average over all matched pairs. H3
+                        supported iff mean control-composite degradation
+                        strictly exceeds mean pixel-composite degradation. No
+                        extra post-hoc threshold; this is the locked directional
+                        test."
 
 honesty:
   - "If H1 is falsified (pixel fidelity strongly predicts control), we still

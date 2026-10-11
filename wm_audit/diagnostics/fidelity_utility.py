@@ -207,16 +207,26 @@ def prereg_decision_h3(rows: List[dict],
       * Control side = the H2 ``control_composite`` (direction-unified rank mean
         of ``return_ece`` (flipped), ``counterfactual_tau`` and
         ``uncertainty_rho`` ascending).
-      * For every compression row, match the float baseline by ``(hidden,
-        seed)``. Because both composites are "higher is better" oriented ranks,
+      * For every compression row, match the float baseline by the EXACT triple
+        ``(hidden, embed, seed)`` -- same hidden, same embed, same seed. Matching
+        on ``(hidden, seed)`` alone is a known mis-pairing bug: the capacity
+        tiers ``[[16,16],[32,16],[32,32]]`` put two different embeds on
+        ``hidden=32``, so ``next(...)`` on ``(hidden, seed)`` would silently pair
+        the int8 ``(32, embed=32)`` row with the wrong ``(32, embed=16)`` float
+        baseline. If several uncompressed rows share the exact triple, the first
+        in row order wins (deterministic); there is NO fallback to a wider key
+        -- a compression row without an exact triple match is dropped, and if
+        that leaves no pairs the verdict is ``not_assessable``.
+        Because both composites are "higher is better" oriented ranks,
         the degradation of a compressed row relative to its matched float
         baseline is
 
             degradation = float_composite - compressed_composite
 
         (a positive value means the compressed model scored worse, i.e. it
-        degraded). We average this paired loss over all matched (hidden, seed)
-        pairs separately on the pixel and control composites.
+        degraded). We average this paired loss over all matched
+        ``(hidden, embed, seed)`` pairs separately on the pixel and control
+        composites.
       * H3 is supported iff the mean control-composite degradation strictly
         exceeds the mean pixel-composite degradation. This is the preregistered
         directional claim -- no extra post-hoc threshold is introduced.
@@ -251,10 +261,13 @@ def prereg_decision_h3(rows: List[dict],
     for i, r in enumerate(rows):
         if not r.get(compression_key):
             continue
-        # matched float baseline = same (hidden, seed), uncompressed
+        # matched float baseline = same (hidden, embed, seed), uncompressed.
+        # Exact triple: the first match in row order wins deterministically;
+        # there is no wider-key fallback when no exact triple exists.
         b_idx = next((j for j, x in enumerate(rows)
                       if not x.get(compression_key)
                       and x.get("hidden") == r.get("hidden")
+                      and x.get("embed") == r.get("embed")
                       and x.get("seed") == r.get("seed")), None)
         if b_idx is None:
             continue
@@ -264,8 +277,9 @@ def prereg_decision_h3(rows: List[dict],
     if not pixel_delta:
         base["status"] = "not_assessable"
         base["reason"] = (
-            "Compression rows exist but none matched a float baseline by "
-            "(hidden, seed); degradation cannot be computed."
+            "Compression rows exist but none matched a float baseline by the "
+            "exact (hidden, embed, seed) triple (no wider-key fallback is "
+            "performed); degradation cannot be computed."
         )
         return base
 

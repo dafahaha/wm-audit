@@ -1,9 +1,9 @@
 # Which world models actually *control*? We measured.
 
 **WM-Audit** is a preregistered, single-GPU audit suite that disentangles
-world-model **perceptual fidelity** (next-frame MSE / SSIM / LPIPS / NLL /
-rollout FVD) from **control utility** (does the model let a planner actually
-solve the task?).
+world-model **perceptual fidelity** (next-frame MSE / SSIM / NLL, plus
+fixed-filter stand-ins† for LPIPS / rollout FVD) from **control utility**
+(does the model let a planner actually solve the task?).
 
 > *Everyone is building bigger world models; almost no one is checking whether
 > the ones we have actually control. We measured it.*
@@ -23,9 +23,11 @@ all preregistered before seeing data.
 
 | | Diagnostic | What it tests |
 |---|---|---|
-| Perceptual | `pixel_mse`, `pixel_ssim`, `pixel_nll`, `pixel_lpips`, `rollout_fvd` | next-frame / rollout image fidelity |
+| Perceptual | `pixel_mse`, `pixel_ssim`, `pixel_nll`, `pixel_lpips`†, `rollout_fvd`† | next-frame / rollout image fidelity |
 | Control | `return_ece`, `counterfactual_tau` | imagined-vs-real return calibration; (s,a1,a2) action ordering |
 | Uncertainty | `uncertainty_rho`, `uncertainty_ece` | does ensemble dispersion track the true error? |
+
+> † **`pixel_lpips` / `rollout_fvd` are fixed-filter stand-ins, not learned perceptual backbones.** They are computed by a deterministic, dependency-free bank of seeded random convolution filters (`wm_audit.diagnostics.perceptual.FixedFilterFeatures`) standing in for the pretrained VGG/AlexNet trunk behind real LPIPS and the feature distribution behind real FVD. The numbers are real and reproducible (no mock), but they are **not** publication-grade learned LPIPS/FVD — do not over-read them as such. Swap in the real `lpips` trunk for main-result numbers.
 
 `counterfactual_tau` is operationalized as the **global pooled Kendall-τb**: at
 each sampled state we step two candidate actions in the oracle env and through
@@ -110,7 +112,7 @@ numbers in this repo are an MVP smoke run, not a main result.)
   Simulators.* RSS 2026 Workshop on Robot World Models. arXiv:2607.07196.
 - **Biased Dreams** — J. Berger, B. Frauenknecht, S. Trimpe, B. Leibe.
   *Biased Dreams: Limitations to Epistemic Uncertainty Quantification in Latent
-  Space Models.* RLC 2026. arXiv:2604.25416.
+  Dynamics Models.* RLC 2026. arXiv:2604.25416.
 - **stable-worldmodel** — L. Maes et al., incl. Y. LeCun, R. Balestriero.
   *stable-worldmodel: A Platform for Reproducible World Modeling Research and
   Evaluation.* arXiv:2605.21800.
