@@ -4,21 +4,23 @@
 
 _Status: smoke / [IN PREPARATION]. Main results pending multi-seed, multi-env runs._
 
+> Correlations are computed on the **float baseline rows only** (n=6): compression-tagged rows (int8) are deployment perturbations of an already-trained model, not new capacity tiers, so they belong only to the H3 paired test and never enter the H1/H2 correlation pool.
+
 ## Diagnostics vs R_real
 
-| diagnostic | Spearman rho vs R_real | 95% CI | Holm-adj p |
+| diagnostic | Spearman rho vs R_real (float-only) | 95% CI | Holm-adj p |
 |---|---|---|---|
-| pixel_mse | 0.643 | [0.190, 0.843] | 0.220 |
-| pixel_ssim | -0.364 | [-0.886, 0.329] | 1.000 |
-| pixel_nll | 0.643 | [0.190, 0.843] | 0.220 |
-| pixel_lpips† | 0.287 | [-0.435, 0.850] | 1.000 |
-| rollout_fvd† | 0.154 | [-0.595, 0.785] | 1.000 |
-| return_ece | 0.755 | [0.241, 0.936] | 0.050 |
-| counterfactual_tau | -0.007 | [-0.616, 0.719] | 1.000 |
-| uncertainty_rho | 0.650 | [0.242, 0.905] | 0.220 |
-| uncertainty_ece | 0.643 | [0.190, 0.843] | 0.220 |
-| pixel_composite | -0.636 | [-0.836, 0.026] | 0.220 |
-| control_composite | -0.046 | [-0.618, 0.697] | 1.000 |
+| pixel_mse | 0.657 | [0.000, 1.000] | 1.000 |
+| pixel_ssim | -0.371 | [-1.000, 0.800] | 1.000 |
+| pixel_nll | 0.657 | [0.000, 1.000] | 1.000 |
+| pixel_lpips† | 0.314 | [-1.000, 1.000] | 1.000 |
+| rollout_fvd† | 0.143 | [-1.000, 1.000] | 1.000 |
+| return_ece | 0.771 | [0.000, 1.000] | 0.796 |
+| counterfactual_tau | -0.086 | [-1.000, 1.000] | 1.000 |
+| uncertainty_rho | 0.657 | [0.000, 1.000] | 1.000 |
+| uncertainty_ece | 0.657 | [0.000, 1.000] | 1.000 |
+| pixel_composite | -0.580 | [-0.949, 0.869] | 1.000 |
+| control_composite | -0.086 | [-1.000, 1.000] | 1.000 |
 
 ## Rows (float baseline + compression variants)
 
@@ -41,8 +43,8 @@ _Status: smoke / [IN PREPARATION]. Main results pending multi-seed, multi-env ru
 
 | hypothesis | status / result |
 |---|---|
-| H1 | observed=-0.636; supports_H1=False |
-| H2 | observed=-0.046; supports_H2=False |
-| H3 | assessable; n_pairs=6; supports_H3=False; pixel_deg=0.400, control_deg=0.222 |
+| H1 | observed=-0.580; supports_H1=False |
+| H2 | observed=-0.086; supports_H2=False |
+| H3 | assessable; n_pairs=6; supports_H3=False; pixel_deg=0.200, control_deg=0.111 |
 
 _† `pixel_lpips` / `rollout_fvd` are fixed-filter stand-ins (deterministic `FixedFilterFeatures` bank), not the learned VGG/AlexNet trunk behind real LPIPS / the feature distribution behind real FVD: real, reproducible distances, but not publication-grade LPIPS/FVD._

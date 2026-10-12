@@ -31,6 +31,17 @@ sample_size:
 # only error-type metric (flipped) and counterfactual_tau / uncertainty_rho are
 # quality-type (ascending ranks). This recipe is implemented verbatim in
 # wm_audit/diagnostics/fidelity_utility.py.
+#
+# H1/H2 POOL = FLOAT BASELINE ROWS ONLY. H1/H2 ask which diagnostics predict
+# closed-loop return ACROSS MODEL CAPACITY. The compression-tagged rows (int8 /
+# channel_prune / distill) are the SAME already-trained model under a deployment
+# perturbation -- a near-duplicate of a float baseline, NOT a new capacity tier
+# -- so they belong ONLY to the H3 paired test. The H1/H2 oriented-rank composite
+# and every H1/H2 Spearman correlation (pixel_composite, control_composite, and
+# the individual diagnostic columns) are therefore computed on
+#   float_rows = [r for r in rows if not r['compression']]
+# only. Compression rows are still displayed in the Rows table but never enter
+# the H1/H2 correlation pool.
 
 hypotheses:
   H1:
@@ -100,16 +111,45 @@ hypotheses:
     operationalization: "Composites, not single metrics. Pixel side = the H1
                         pixel_composite; control side = the H2 control_composite
                         (return_ece flipped, counterfactual_tau and
-                        uncertainty_rho ascending). For each compression row
-                        matched to its float baseline by the exact
-                        (hidden, embed, seed) triple, paired degradation =
-                        float_composite - compressed_composite on each side (both
-                        composites are 'higher is better', so a positive value =
-                        a real degradation). Average over all matched pairs. H3
-                        supported iff mean control-composite degradation
-                        strictly exceeds mean pixel-composite degradation. No
-                        extra post-hoc threshold; this is the locked directional
-                        test."
+                        uncertainty_rho ascending). CRITICAL: the rank scale is
+                        FIXED to the float baseline set -- the capacity ladder
+                        -- NOT to the float+compression union, so degradation
+                        never drifts when another lever is added/removed:
+                          (a) float_rows (no compression key) form the fixed
+                              reference ladder;
+                          (b) compute the oriented-rank composites ON float_rows
+                              (rankdata, error-type flipped) -> one float
+                              composite per baseline;
+                          (c) for each compression row, INSERT each of its
+                              diagnostic values into the fixed float reference
+                              distribution and read its competition/insertion
+                              rank on the SAME ladder:
+                                  ins_asc(x) = #{s<x} + 0.5*#{s==x} + 0.5,
+                              then flip for error-type diagnostics exactly as
+                              the float ranks are flipped. This is deterministic
+                              and self-consistent: a value tied to a float
+                              reference reproduces that reference's own rank, so
+                              a compressed row identical to its baseline scores
+                              0.0 degradation; the inserted rank depends ONLY on
+                              the fixed float ladder, never on how many other
+                              compressed rows exist. Average the inserted ranks
+                              into a compressed pixel composite and control
+                              composite;
+                          (d) match each compression row to its float baseline by
+                              the EXACT (hidden, embed, seed) triple (first
+                              float row in row order wins; no wider-key fallback);
+                          (e) paired degradation = float_composite -
+                              inserted_compressed_composite on each side (both
+                              composites are 'higher is better', so a positive
+                              value = a real degradation). Average over all
+                              matched pairs. H3 supported iff mean
+                              control-composite degradation strictly exceeds
+                              mean pixel-composite degradation. No extra
+                              post-hoc threshold; this is the locked directional
+                              test. An invariance test pins this: two row sets
+                              that differ ONLY in the number of compression
+                              levers give the shared pair's pixel/control
+                              degradation to the digit."
 
 # Ensemble convention (applied identically to float and compressed rows).
 # Pixel/uncertainty diagnostics average per-ensemble-member values across the

@@ -74,19 +74,32 @@ def main():
         print("  ", {k: (round(v, 4) if isinstance(v, float) else v)
                     for k, v in r.items()})
 
-    # Preregistered composite scores (direction-unified rank composites).
-    pixel_scores = pixel_composite_scores(rows)
-    control_scores = control_composite_scores(rows)
-    for r, ps, cs in zip(rows, pixel_scores, control_scores):
+    # H1/H2 ask "which diagnostics predict closed-loop return ACROSS MODEL
+    # CAPACITY". The compression-tagged rows (int8 etc.) are the SAME trained
+    # model under a deployment perturbation -- a near-duplicate of a float row,
+    # not a new capacity tier -- so they belong ONLY to the H3 paired test and
+    # must NOT pollute the H1/H2 composite/correlation pool. Compute composites
+    # and Spearman correlations on the float baseline rows alone. Compression
+    # rows are still displayed in the Rows table above; they just never enter
+    # the H1/H2 correlation pool.
+    float_rows = [r for r in rows if not r.get("compression")]
+
+    # Preregistered composite scores (direction-unified rank composites) on the
+    # float capacity ladder ONLY.
+    pixel_scores = pixel_composite_scores(float_rows)
+    control_scores = control_composite_scores(float_rows)
+    for r, ps, cs in zip(float_rows, pixel_scores, control_scores):
         r["pixel_composite"] = float(ps)
         r["control_composite"] = float(cs)
 
     corr_diagnostics = list(diagnostics) + ["pixel_composite", "control_composite"]
 
     print("\n" + "=" * 72)
-    print("Diagnostic vs closed-loop return R_real  (Spearman rho + 95% bootstrap CI)")
+    print(f"Diagnostic vs closed-loop return R_real  (Spearman rho + 95% bootstrap CI)")
+    print(f"POOL: float baseline rows only (n={len(float_rows)}); compression rows "
+          f"excluded (H3-only)")
     print("=" * 72)
-    res = audit_correlations(rows, corr_diagnostics, return_key="R_real",
+    res = audit_correlations(float_rows, corr_diagnostics, return_key="R_real",
                              n_boot=cfg.get("bootstrap_resamples", 200),
                              ci=0.95, seed=0)
     print(f"{'diagnostic':<22}{'rho':>8}{'ci_lo':>9}{'ci_hi':>9}{'p_raw':>9}{'p_adj':>9}")

@@ -29,7 +29,7 @@ def main():
         with open(res_path, "r", encoding="utf-8") as f:
             data = json.load(f)
         corr = data["correlations"]
-        lines = ["| diagnostic | Spearman rho vs R_real | 95% CI | Holm-adj p |",
+        lines = ["| diagnostic | Spearman rho vs R_real (float-only) | 95% CI | Holm-adj p |",
                  "|---|---|---|---|"]
         for d, v in corr.items():
             # Mark the fixed-filter stand-ins so they are never read as real
@@ -76,6 +76,11 @@ def main():
         "utility? Lower on pixel metrics = better fidelity.\n\n"
         "_Status: smoke / [IN PREPARATION]. Main results pending multi-seed, "
         "multi-env runs._\n\n"
+        "> Correlations are computed on the **float baseline rows only** "
+        "(n=" + str(next(iter(corr.values()))["n"]) + "): compression-tagged "
+        "rows (int8) are deployment perturbations of an already-trained model, "
+        "not new capacity tiers, so they belong only to the H3 paired test and "
+        "never enter the H1/H2 correlation pool.\n\n"
         "## Diagnostics vs R_real\n\n"
         + table + rows_block + verdicts_block + "\n\n"
         "_† `pixel_lpips` / `rollout_fvd` are fixed-filter stand-ins (deterministic "

@@ -40,9 +40,21 @@ rate / fraction of states where the two actions are ordered correctly.
 already averaged per-member values across the ensemble. The control battery
 (`return_ece`, `counterfactual_tau`) is now on the same footing: each is computed
 *per member* on the identical segments/states and averaged across members, rather
-than silently using only the lead member. Compressed rows (e.g. INT8) are the
-same ensemble run through the same battery; `H3` pairs each INT8 row with its
-float baseline on the exact `(hidden, embed, seed)` triple.
+than silently using only the lead member.
+
+**Which rows enter which test.** H1/H2 ask which diagnostics predict closed-loop
+return *across model capacity*, so their oriented-rank composites and every
+Spearman correlation are computed on the **float baseline rows only**
+(`[r for r in rows if not r['compression']]`). Compression-tagged rows (e.g.
+INT8) are the *same already-trained ensemble* under a deployment perturbation — a
+near-duplicate of a float baseline, not a new capacity tier — so they belong only
+to H3. They are still shown in the leaderboard Rows table, but never enter the
+H1/H2 correlation pool. H3 pairs each INT8 row with its float baseline on the
+exact `(hidden, embed, seed)` triple, and measures degradation on a **fixed
+reference ladder** locked to the float baseline set: each compressed row's
+diagnostic values are *inserted* into the fixed float reference distribution
+(competition/insertion rank), so adding or removing another compression lever
+cannot shift a shared pair's degradation.
 
 ## Preregistered hypotheses (see `configs/preregistration.yaml`)
 

@@ -87,6 +87,43 @@ def _oriented_ranks(values: Sequence[float], lower_is_better: bool) -> np.ndarra
     return r
 
 
+def _insertion_rank_oriented(x: float, ref_values: Sequence[float],
+                             lower_is_better: bool) -> float:
+    """Competition / insertion rank of ONE value against a FIXED reference ladder.
+
+    H3 is a *paired* test (each compressed row vs its own float baseline). The
+    rank-normalisation scale must therefore NOT move when we add/remove other
+    compression levers -- it is locked to the float baseline set, which is the
+    capacity ladder. For each diagnostic we take the float rows' values as the
+    fixed reference distribution ``ref`` (size ``n``), and ask where a compressed
+    row's value ``x`` would slot in on that SAME ladder:
+
+        ins_asc(x) = #{s in ref : s < x} + 0.5 * #{s in ref : s == x} + 0.5
+
+    This is the average-rank / midrank insertion convention:
+      * x strictly above every ref value  -> n + 0.5 (best possible compressed),
+      * x strictly below every ref value  -> 0.5    (worst possible compressed),
+      * x tying a ref tie-block           -> reproduces that block's ``rankdata``
+        average rank exactly, so a compressed row identical to its float
+        baseline scores the SAME as the baseline on every diagnostic (paired
+        degradation 0.0).
+
+    ``lower_is_better`` flips the ascending insertion just like
+    ``_oriented_ranks`` flips ascending ranks, so a HIGHER number always means
+    BETTER fidelity/control. Crucially this depends ONLY on the fixed float
+    reference set -- never on how many compressed rows are present -- so adding
+    or deleting another lever cannot shift a shared pair's degradation.
+    """
+    ref = np.asarray(ref_values, dtype=float).reshape(-1)
+    n = ref.size
+    k = float(np.sum(ref < x))     # reference values strictly below x
+    m = float(np.sum(ref == x))    # reference values tied with x
+    ins_asc = k + 0.5 * m + 0.5
+    if lower_is_better:
+        return (n + 1.0) - ins_asc
+    return ins_asc
+
+
 def composite_score(
     rows: List[dict],
     diagnostics: Sequence[str],
@@ -194,46 +231,108 @@ def prereg_decision_h2(rho_control: float, threshold: float = 0.6) -> dict:
     }
 
 
+def h3_pair_degradations(
+    rows: List[dict],
+    compression_key: str = COMPRESSION_KEY,
+) -> Dict[str, object]:
+    """Per-pair H3 degradation on the FIXED float reference ladder.
+
+    Returns ``{"float_rows": [...], "pairs": [ {pair dict}, ... ]}``. Each pair
+    dict carries the matched ``(hidden, embed, seed)`` triple, the lever tag,
+    the float baseline composite, the inserted compressed composite, and the
+    paired degradation on the pixel and control sides. Pairs are listed in
+    compression-row order; unmatched compression rows are simply absent.
+
+    The reference ladder is ``float_rows`` ONLY, so a given compressed row's
+    inserted composite -- and therefore its paired degradation -- does not
+    change when other compression levers are added or removed (the H3
+    invariance property this module is locked around).
+    """
+    comp_rows = [r for r in rows if r.get(compression_key)]
+    float_rows = [r for r in rows if not r.get(compression_key)]
+
+    pairs: List[dict] = []
+    if comp_rows and float_rows:
+        float_pixel = composite_score(float_rows, PIXEL_DIAGNOSTICS,
+                                      _PIXEL_LOWER_IS_BETTER)
+        float_control = composite_score(float_rows, CONTROL_DIAGNOSTICS,
+                                        _CONTROL_LOWER_IS_BETTER)
+        float_lookup: Dict[tuple, tuple] = {}
+        for fr, ps, cs in zip(float_rows, float_pixel, float_control):
+            key = (fr.get("hidden"), fr.get("embed"), fr.get("seed"))
+            float_lookup.setdefault(key, (float(ps), float(cs)))
+
+        def _inserted_composite(row: dict, diagnostics: Sequence[str],
+                                lower_is_better_map: Dict[str, bool]) -> float:
+            total = 0.0
+            for d in diagnostics:
+                ref = [fr[d] for fr in float_rows]
+                total += _insertion_rank_oriented(row[d], ref,
+                                                  lower_is_better_map[d])
+            return total / float(len(diagnostics))
+
+        for r in comp_rows:
+            key = (r.get("hidden"), r.get("embed"), r.get("seed"))
+            if key not in float_lookup:
+                continue   # no exact triple match -> dropped, no wider-key fallback
+            fps, fcs = float_lookup[key]
+            cps = _inserted_composite(r, PIXEL_DIAGNOSTICS, _PIXEL_LOWER_IS_BETTER)
+            ccs = _inserted_composite(r, CONTROL_DIAGNOSTICS, _CONTROL_LOWER_IS_BETTER)
+            pairs.append({
+                "hidden": r.get("hidden"), "embed": r.get("embed"),
+                "seed": r.get("seed"), "compression": r.get(compression_key),
+                "float_pixel_composite": fps, "float_control_composite": fcs,
+                "compressed_pixel_composite": cps,
+                "compressed_control_composite": ccs,
+                "pixel_degradation": fps - cps,
+                "control_degradation": fcs - ccs,
+            })
+    return {"float_rows": float_rows, "pairs": pairs}
+
+
 def prereg_decision_h3(rows: List[dict],
                        compression_key: str = COMPRESSION_KEY) -> dict:
     """H3: under compression, pixel fidelity degrades slowly while return
     calibration and uncertainty alignment degrade faster.
 
-    Operationalization (faithful to the preregistered composite recipe, see the
-    "Composite diagnostics" note in ``configs/preregistration.yaml``):
+    Operationalization (faithful to ``configs/preregistration.yaml``):
 
-      * Pixel side = the H1 ``pixel_composite`` (direction-unified rank mean of
-        the five pixel diagnostics).
-      * Control side = the H2 ``control_composite`` (direction-unified rank mean
-        of ``return_ece`` (flipped), ``counterfactual_tau`` and
-        ``uncertainty_rho`` ascending).
-      * For every compression row, match the float baseline by the EXACT triple
-        ``(hidden, embed, seed)`` -- same hidden, same embed, same seed. Matching
-        on ``(hidden, seed)`` alone is a known mis-pairing bug: the capacity
-        tiers ``[[16,16],[32,16],[32,32]]`` put two different embeds on
-        ``hidden=32``, so ``next(...)`` on ``(hidden, seed)`` would silently pair
-        the int8 ``(32, embed=32)`` row with the wrong ``(32, embed=16)`` float
-        baseline. If several uncompressed rows share the exact triple, the first
-        in row order wins (deterministic); there is NO fallback to a wider key
-        -- a compression row without an exact triple match is dropped, and if
-        that leaves no pairs the verdict is ``not_assessable``.
-        Because both composites are "higher is better" oriented ranks,
-        the degradation of a compressed row relative to its matched float
-        baseline is
+    Fixed reference ladder (invariance-critical)
+    --------------------------------------------
+    H3 is a *paired* test -- each compressed row is judged against its own float
+    baseline on the exact ``(hidden, embed, seed)`` triple. The rank scale we
+    measure degradation on MUST be fixed, so it is locked to the float baseline
+    set (the capacity ladder), NOT to the float+compressed union:
 
-            degradation = float_composite - compressed_composite
+      1. Split ``rows`` into ``float_rows`` (no ``compression`` key) and
+         ``comp_rows``. The float rows alone form the fixed reference ladder.
+      2. Compute the H1/H2 direction-unified rank composites ON ``float_rows``
+         (``composite_score`` -> ``rankdata`` oriented ranks) to score every
+         float baseline.
+      3. For every compressed row, score it on that SAME ladder by INSERTING
+         each of its diagnostic values into the fixed float reference
+         distribution (``_insertion_rank_oriented``), then averaging the
+         inserted ranks into a pixel composite and a control composite. Because
+         the reference set is the fixed float ladder, the inserted rank of a
+         given compressed value does not depend on how many other compressed
+         rows exist -- adding/deleting a lever cannot move it.
+      4. Match the compressed row to its float baseline by the EXACT triple
+         ``(hidden, embed, seed)`` (first float row in row order wins; there is
+         NO wider-key fallback -- an unmatched compression row is dropped).
+      5. Paired degradation = float_composite - compressed_composite on each
+         side (both composites are "higher is better", so positive = the
+         compressed model scored worse / degraded). Average over all matched
+         pairs.
 
-        (a positive value means the compressed model scored worse, i.e. it
-        degraded). We average this paired loss over all matched
-        ``(hidden, embed, seed)`` pairs separately on the pixel and control
-        composites.
       * H3 is supported iff the mean control-composite degradation strictly
-        exceeds the mean pixel-composite degradation. This is the preregistered
-        directional claim -- no extra post-hoc threshold is introduced.
+        exceeds the mean pixel-composite degradation. No post-hoc threshold.
 
-    If the run contains no compression rows (or none matches a float baseline),
-    the verdict is honestly ``not_assessable`` -- we never fabricate the
-    comparison.
+    Self-consistency: a compressed row identical to its float baseline on every
+    diagnostic inserts at exactly the baseline's own ladder rank -> 0.0
+    degradation on both sides.
+
+    If the run contains no compression rows, no float rows, or no compression
+    row matches a float baseline, the verdict is honestly ``not_assessable``.
     """
     comp_rows = [r for r in rows if r.get(compression_key)]
     base = {
@@ -250,31 +349,19 @@ def prereg_decision_h3(rows: List[dict],
         )
         return base
 
-    # Reuse the exact H1/H2 composites over the whole configuration set (the
-    # rank recipe is defined "within the configuration set"), then read the
-    # per-row score off. Both are "higher is better".
-    pixel_scores = pixel_composite_scores(rows)
-    control_scores = control_composite_scores(rows)
+    ladder = h3_pair_degradations(rows, compression_key)
+    float_rows = ladder["float_rows"]
+    pairs = ladder["pairs"]
 
-    pixel_delta: List[float] = []
-    control_delta: List[float] = []
-    for i, r in enumerate(rows):
-        if not r.get(compression_key):
-            continue
-        # matched float baseline = same (hidden, embed, seed), uncompressed.
-        # Exact triple: the first match in row order wins deterministically;
-        # there is no wider-key fallback when no exact triple exists.
-        b_idx = next((j for j, x in enumerate(rows)
-                      if not x.get(compression_key)
-                      and x.get("hidden") == r.get("hidden")
-                      and x.get("embed") == r.get("embed")
-                      and x.get("seed") == r.get("seed")), None)
-        if b_idx is None:
-            continue
-        # degradation = float_composite - compressed_composite (positive => worse)
-        pixel_delta.append(float(pixel_scores[b_idx] - pixel_scores[i]))
-        control_delta.append(float(control_scores[b_idx] - control_scores[i]))
-    if not pixel_delta:
+    if not float_rows:
+        base["status"] = "not_assessable"
+        base["reason"] = (
+            "Compression rows exist but no float baseline rows are present to "
+            "form the fixed reference ladder; degradation cannot be computed."
+        )
+        return base
+
+    if not pairs:
         base["status"] = "not_assessable"
         base["reason"] = (
             "Compression rows exist but none matched a float baseline by the "
@@ -283,6 +370,8 @@ def prereg_decision_h3(rows: List[dict],
         )
         return base
 
+    pixel_delta = [p["pixel_degradation"] for p in pairs]
+    control_delta = [p["control_degradation"] for p in pairs]
     pixel_deg = float(np.mean(pixel_delta))
     control_deg = float(np.mean(control_delta))
     support = bool(control_deg > pixel_deg)
@@ -290,6 +379,7 @@ def prereg_decision_h3(rows: List[dict],
         "status": "assessable",
         "compression_lever": comp_rows[0].get(compression_key),
         "n_pairs": len(pixel_delta),
+        "reference_ladder_size": len(float_rows),
         "pixel_composite_degradation": pixel_deg,
         "control_composite_degradation": control_deg,
         "supports_H3": support,

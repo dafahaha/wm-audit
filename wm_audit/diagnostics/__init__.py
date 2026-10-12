@@ -24,6 +24,7 @@ from .fidelity_utility import (
     prereg_decision_h3,
     pixel_composite_scores,
     control_composite_scores,
+    h3_pair_degradations,
 )
 
 __all__ = [
@@ -34,4 +35,5 @@ __all__ = [
     "audit_correlations",
     "prereg_decision_h1", "prereg_decision_h2", "prereg_decision_h3",
     "pixel_composite_scores", "control_composite_scores",
+    "h3_pair_degradations",
 ]
