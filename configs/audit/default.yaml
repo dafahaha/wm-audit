@@ -36,10 +36,42 @@ smoke:
   # smoke MUST list >=1 int8 lever so the H3 assessable branch runs end-to-end in CI.
   compression_levers: [int8]
 
-main:                                            # [IN PREPARATION]
-  buffer_capacity: 200000
-  collect_steps: 100000
+main:
+  # ==========================================================================
+  # MAIN RUN AS EXECUTED ON THIS MACHINE (2026-10-13).
+  # This is a CPU REDUCED PILOT, NOT the locked preregistration 200k-step main.
+  # Deviations (all documented here, none silent):
+  #   * env: pixel_nav ONLY. The 2nd prereg env dm_control.cartpole_swingup
+  #     CANNOT install on Windows: `pip install dm_control` pulls `labmaze`,
+  #     which has no cp3.13 wheel and requires `bazel` to build from source
+  #     (`error: command 'bazel' failed`). Atari/ale-py is out of prereg scope.
+  #   * device: CPU (venv torch 2.14.1+cpu; cuda_available=False). A cu124
+  #     install was attempted but pip keeps the already-satisfied CPU wheel;
+  #     the models are sub-10k-param RSSMs (batch 64, 256-dim obs) so a GPU
+  #     would be kernel-launch-bound anyway. Measured CPU throughput ~236
+  #     member-steps/s -> the locked 200k steps x 5 seeds x 3 caps x 2 envs
+  #     (~21 h) is out of session budget.
+  #   * seeds 3 (prereg GOAL 5), train_steps 12000 (prereg 200000),
+  #     collect_steps 8000 (prereg 100000). Capacities, bootstrap=2000 and the
+  #     int8 lever are kept exactly as preregistered.
+  # The stats machinery (float-only H1/H2, fixed-float-ladder H3, t-approx p +
+  # Holm, percentile bootstrap) is the locked pipeline, run verbatim.
+  # ==========================================================================
+  buffer_capacity: 16000
+  collect_steps: 8000
+  data_seed: 123
   ensemble_size: 3
-  train_steps: 200000
+  train_steps: 12000
+  batch_size: 64
+  lr: 0.002
+  calib_segments: 24
+  calib_horizon: 8
+  cf_pairs: 40
+  cem_horizon: 6
+  cem_candidates: 48
+  cem_elites: 8
+  cem_iters: 2
+  capacities: [[16, 16], [32, 16], [32, 32]]   # hidden, embed: distinct small/med/large
+  seeds: [0, 1, 2]
   bootstrap_resamples: 2000
-  compression_levers: []                         # enable with [int8] when main runs
+  compression_levers: [int8]

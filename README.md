@@ -69,9 +69,18 @@ cannot shift a shared pair's degradation.
 - ✅ **Implemented and CI-tested**: stats core (Spearman / Kendall / bootstrap /
   Holm), the diagnostic battery, a deterministic built-in env, replay buffer, a
   tiny CPU RSSM, CEM-MPC close-loop, and INT8 quantization parity.
-- 🚧 **In preparation**: multi-seed/multi-env main results, `dm_control`
-  cartpole adapter, public leaderboard numbers. No star/result counts are
-  claimed until measured.
+- 🧪 **MAIN run executed as a CPU reduced pilot (2026-10-13), results in
+  `leaderboard/LEADERBOARD.md`** — env `pixel_nav` only (the 2nd prereg env
+  `dm_control.cartpole_swingup` cannot install on Windows: `labmaze` needs
+  `bazel`); 3 seeds × 3 capacities (n=9 float rows), INT8 lever,
+  `bootstrap=2000`. Verdicts: **H1 supported** (|ρ(pixel_composite,R)|=0.32<0.4),
+  **H2 not supported** (ρ(control_composite,R)=0.26<0.6), **H3 not supported**
+  (INT8 control-deg 0.35 ≤ pixel-deg 0.43, n_pairs=9). This is a *reduced pilot*,
+  not the locked 200k-step × 5-seed × 2-env main: seeds 3 (goal 5),
+  `train_steps=12000` (goal 200000) for CPU wall-clock; see the config comment block.
+- 🚧 **Still in preparation**: the full preregistered 200k-step multi-env main on
+  `dm_control` cartpole, public leaderboard numbers. No result counts are claimed
+  beyond what is measured above.
 
 ## Quickstart
 
