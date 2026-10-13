@@ -17,6 +17,9 @@
 > `train_steps=12000` (prereg 200000), `collect_steps=8000` (prereg 100000)** — because the
 > locked 200k×5-seed×3-cap×2-env design is ~21 CPU-hours (measured ~236 member-steps/s) and
 > dm_control is unavailable. No numbers were tuned or back-filled.
+>
+> Reproduce this section: `python experiments/make_leaderboard.py` regenerates it from the
+> committed `leaderboard/results_main.json`.
 
 Correlations are computed on the **float baseline rows only** (n=9 = 3 seeds × 3 capacities):
 INT8 rows are deployment perturbations of an already-trained model, not new capacity tiers, so
@@ -43,17 +46,17 @@ they belong only to the H3 paired test and never enter the H1/H2 correlation poo
 | hidden | embed | seed | compression | R_real | pixel_mse | return_ece | counterfactual_tau |
 |---|---|---|---|---|---|---|---|
 | 16 | 16 | 0 | float | -41.587 | 0.010 | 2.313 | 0.677 |
-| 16 | 16 | 0 | int8 | -74.919 | 0.010 | 2.233 | 0.675 |
+| 16 | 16 | 0 | int8 | -74.919 | 0.010 | 2.232 | 0.675 |
 | 32 | 16 | 0 | float | -43.725 | 0.008 | 3.297 | 0.679 |
 | 32 | 16 | 0 | int8 | -59.778 | 0.008 | 3.298 | 0.676 |
 | 32 | 32 | 0 | float | -107.628 | 0.007 | 2.828 | 0.597 |
 | 32 | 32 | 0 | int8 | -74.683 | 0.007 | 2.518 | 0.592 |
 | 16 | 16 | 1 | float | -7.329 | 0.011 | 3.365 | 0.667 |
 | 16 | 16 | 1 | int8 | -1.353 | 0.011 | 3.341 | 0.661 |
-| 32 | 16 | 1 | float | -89.635 | 0.008 | 3.092 | 0.690 |
+| 32 | 16 | 1 | float | -89.635 | 0.008 | 3.092 | 0.689 |
 | 32 | 16 | 1 | int8 | -80.596 | 0.008 | 3.098 | 0.681 |
 | 32 | 32 | 1 | float | -79.017 | 0.006 | 3.245 | 0.586 |
-| 32 | 32 | 1 | int8 | -49.060 | 0.007 | 3.349 | 0.578 |
+| 32 | 32 | 1 | int8 | -49.060 | 0.006 | 3.349 | 0.578 |
 | 16 | 16 | 2 | float | -41.086 | 0.012 | 2.520 | 0.607 |
 | 16 | 16 | 2 | int8 | -12.732 | 0.012 | 2.664 | 0.603 |
 | 32 | 16 | 2 | float | -85.485 | 0.008 | 3.022 | 0.661 |

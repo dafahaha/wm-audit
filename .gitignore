@@ -10,4 +10,5 @@ venv/
 *.pt
 *.ckpt
 leaderboard/results_*.json
+!leaderboard/results_main.json
 !leaderboard/.gitkeep

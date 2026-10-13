@@ -1,6 +1,6 @@
 # Which world models actually *control*? We measured.
 
-**WM-Audit** is a preregistered, single-GPU audit suite that disentangles
+**WM-Audit** is a preregistered, single-machine CPU audit suite that disentangles
 world-model **perceptual fidelity** (next-frame MSE / SSIM / NLL, plus
 fixed-filter stand-ins† for LPIPS / rollout FVD) from **control utility**
 (does the model let a planner actually solve the task?).
@@ -130,7 +130,8 @@ We verified both go red when the underlying math is broken.
 
 WM-Audit is a measurement layer on top of the following world models and
 recent audit-adjacent work. (IDs verified against arXiv abstract pages; the
-numbers in this repo are an MVP smoke run, not a main result.)
+numbers in this repo are a CPU reduced-pilot main run on `pixel_nav` plus a
+downgraded CI smoke placeholder — not the locked 200k-step multi-env main.)
 
 - **DreamerV3** — D. Hafner, J. Pasukonis, J. Ba, T. Lillicrap.
   *Mastering Diverse Domains through World Models.* arXiv:2301.04104.
