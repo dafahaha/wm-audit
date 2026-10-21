@@ -105,3 +105,18 @@ def test_holm_correction_preserves_size():
     # (already ascending) sorted order, and match the hand-computed values.
     assert all(adj[i] <= adj[i + 1] + 1e-12 for i in range(len(adj) - 1))
     assert list(adj) == pytest.approx([0.04, 0.06, 0.06, 0.5])
+
+
+def test_holm_floor_raises_dipping_step_down_values():
+    # The plain (n-rank)*p step-down product can DIP below an earlier adjusted
+    # value (here 4*0.04=0.16, then 3*0.05=0.15, 2*0.05=0.10). Holm's running
+    # floor must raise each to the running maximum, keeping adjusted p-values
+    # non-decreasing on the sorted order. Without the floor this returns the
+    # dipping [0.16, 0.15, 0.10, 0.5], which violates Holm monotonicity.
+    p = [0.04, 0.05, 0.05, 0.5]
+    adj = holm_correction(p)
+    assert list(adj) == pytest.approx([0.16, 0.16, 0.16, 0.5])
+    order = np.argsort(p)
+    sorted_adj = adj[order]
+    assert all(sorted_adj[i] <= sorted_adj[i + 1] + 1e-12
+               for i in range(len(sorted_adj) - 1))
