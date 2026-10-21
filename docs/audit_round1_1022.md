@@ -232,7 +232,23 @@ Plus CI end-to-end step `python -m experiments.run_audit --mode smoke` → exit 
 
 1. `60717ae` test(stats): pin Holm step-down monotonic floor with a dipping case
 2. `f0db23b` fix(leaderboard): track smoke placeholder json so render works on clone
-3. this report (docs(audit): round-1 read-only audit)
+3. `147bc84` docs(audit): round-1 independent read-only audit report
+
+---
+
+## 6b. CI verification (post-push)
+
+- Pushed `757e5b2..147bc84` to `origin/main` over SSH (identity
+  dafahaha / dafahaha@users.noreply.github.com).
+- GitHub Actions **CI #12** on `147bc84`: **completed successfully** (3m33s),
+  per the public Actions page. Per-step log pages are robots-blocked and the
+  anonymous API is rate-limited; both CI steps were instead executed locally
+  with exit 0 (`pytest -q` = 58 passed; `run_audit --mode smoke` = exit 0).
+- No GitHub Pages / static site exists (no `gh-pages` branch, no HTML); the
+  public leaderboard is `leaderboard/LEADERBOARD.md`, re-rendered byte-identical
+  from committed JSON and confirmed matching on `main` raw.
+- No "main run in progress" overclaim introduced; the locked 200k×5-seed×2-env
+  main experiment remains "preregistered, pending Linux/CUDA" everywhere.
 
 ---
 
