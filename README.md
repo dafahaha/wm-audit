@@ -69,8 +69,9 @@ cannot shift a shared pair's degradation.
 - ✅ **Implemented and CI-tested**: stats core (Spearman / Kendall / bootstrap /
   Holm), the diagnostic battery, a deterministic built-in env, replay buffer, a
   tiny CPU RSSM, CEM-MPC close-loop, and INT8 quantization parity.
-- 🧪 **MAIN run executed as a CPU reduced pilot (2026-10-13), results in
-  `leaderboard/LEADERBOARD.md`** — env `pixel_nav` only (the 2nd prereg env
+- 🧪 **Preregistered CPU reduced pilot executed (2026-10-13); the locked MAIN
+  run has NOT been executed.** The committed numbers in `leaderboard/LEADERBOARD.md`
+  come from this reduced pilot only: env `pixel_nav` only (the 2nd prereg env
   `dm_control.cartpole_swingup` cannot install on Windows: `labmaze` needs
   `bazel`); 3 seeds × 3 capacities (n=9 float rows), INT8 lever,
   `bootstrap=2000`. Verdicts: **H1 supported** (|ρ(pixel_composite,R)|=0.32<0.4),
@@ -78,9 +79,9 @@ cannot shift a shared pair's degradation.
   (INT8 control-deg 0.35 ≤ pixel-deg 0.43, n_pairs=9). This is a *reduced pilot*,
   not the locked 200k-step × 5-seed × 2-env main: seeds 3 (goal 5),
   `train_steps=12000` (goal 200000) for CPU wall-clock; see the config comment block.
-- 🚧 **Still in preparation**: the full preregistered 200k-step multi-env main on
-  `dm_control` cartpole, public leaderboard numbers. No result counts are claimed
-  beyond what is measured above.
+- 🚧 **Locked MAIN run pending (requires Linux/CUDA)**: the preregistered
+  200k-step × 5-seed × 2-env main has not been executed; no main numbers exist
+  and none are claimed beyond the reduced-pilot measurements above.
 
 ## Quickstart
 
@@ -130,8 +131,9 @@ We verified both go red when the underlying math is broken.
 
 WM-Audit is a measurement layer on top of the following world models and
 recent audit-adjacent work. (IDs verified against arXiv abstract pages; the
-numbers in this repo are a CPU reduced-pilot main run on `pixel_nav` plus a
-downgraded CI smoke placeholder — not the locked 200k-step multi-env main.)
+numbers in this repo come from the preregistered CPU reduced pilot on `pixel_nav`
+plus a downgraded CI smoke placeholder. The locked 200k-step × 5-seed × 2-env
+MAIN run has NOT been executed; it requires Linux/CUDA.)
 
 - **DreamerV3** — D. Hafner, J. Pasukonis, J. Ba, T. Lillicrap.
   *Mastering Diverse Domains through World Models.* arXiv:2301.04104.

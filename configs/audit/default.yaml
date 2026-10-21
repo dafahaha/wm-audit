@@ -38,8 +38,10 @@ smoke:
 
 main:
   # ==========================================================================
-  # MAIN RUN AS EXECUTED ON THIS MACHINE (2026-10-13).
-  # This is a CPU REDUCED PILOT, NOT the locked preregistration 200k-step main.
+  # REDUCED PILOT RUN ON THIS MACHINE (2026-10-13) ONLY.
+  # The locked preregistration MAIN run (200k steps x 5 seeds x 2 envs) has NOT
+  # been executed; it requires Linux/CUDA. This block is the CPU REDUCED PILOT,
+  # not the locked MAIN.
   # Deviations (all documented here, none silent):
   #   * env: pixel_nav ONLY. The 2nd prereg env dm_control.cartpole_swingup
   #     CANNOT install on Windows: `pip install dm_control` pulls `labmaze`,

@@ -249,6 +249,14 @@ Plus CI end-to-end step `python -m experiments.run_audit --mode smoke` → exit 
   from committed JSON and confirmed matching on `main` raw.
 - No "main run in progress" overclaim introduced; the locked 200k×5-seed×2-env
   main experiment remains "preregistered, pending Linux/CUDA" everywhere.
+- **Honesty-wording alignment (follow-up):** the phrase "MAIN run executed as a
+  CPU reduced pilot" (README status bullet, README references note,
+  `configs/audit/default.yaml` main-block header, leaderboard section/verdict
+  headers) could be read as the locked 200k×5-seed×2-env MAIN having run. It was
+  reworded to state explicitly that the locked MAIN run has NOT been executed
+  (requires Linux/CUDA) and that committed numbers are the preregistered CPU
+  reduced pilot only. No statistic, table cell, or verdict changed; the
+  leaderboard diff is prose-only (verified: no numeric line touched).
 
 ---
 

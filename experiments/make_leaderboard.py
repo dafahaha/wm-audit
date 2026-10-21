@@ -4,8 +4,8 @@
 Two sections are emitted, each generated from its own committed JSON so the
 public leaderboard is fully reproducible from code + data in the repo:
 
-* MAIN reduced pilot  <- leaderboard/results_main.json  (tracked in git)
-* SMOKE CI placeholder <- leaderboard/results_smoke.json (history, see .gitignore)
+* Reduced pilot (CPU, NOT the locked MAIN run) <- leaderboard/results_main.json (tracked in git)
+* SMOKE CI placeholder <- leaderboard/results_smoke.json (preserved history, tracked in git)
 
 Re-running this script must leave a clean `git status` (generated file == the
 committed one). It never hand-writes numbers; every table cell is derived from
@@ -82,7 +82,7 @@ def _main_verdicts(data):
               if h3["supports_H3"] else
               "**NOT supported** (n_pairs={})".format(h3.get("n_pairs", "-")))
     lines = [
-        "### Preregistered verdicts (MAIN reduced pilot)",
+        "### Preregistered verdicts (reduced pilot; NOT the locked MAIN run)",
         "",
         "| hypothesis | threshold | observed rho | result |",
         "|---|---|---|---|",
@@ -122,9 +122,11 @@ def main():
 
 > Which world-model diagnostics actually predict closed-loop control utility? Lower on pixel metrics = better fidelity.
 
-## MAIN results — CPU reduced pilot (2026-10-13)
+## Reduced-pilot results — CPU (2026-10-13)
 
-> **Status: CPU reduced pilot, NOT the locked preregistration 200k-step main.**
+> **Status: preregistered CPU REDUCED PILOT only. The locked 200k-step × 5-seed ×
+> 2-env MAIN run has NOT been executed (requires Linux/CUDA); nothing below is a
+> MAIN result.**
 > Env: built-in `pixel_nav` only. The 2nd prereg env `dm_control.cartpole_swingup`
 > **cannot install on Windows**: `pip install dm_control` pulls `labmaze`, which has
 > no cp3.13 wheel and requires `bazel` to build from source (`error: command 'bazel'

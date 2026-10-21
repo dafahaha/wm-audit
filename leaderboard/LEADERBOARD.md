@@ -2,9 +2,11 @@
 
 > Which world-model diagnostics actually predict closed-loop control utility? Lower on pixel metrics = better fidelity.
 
-## MAIN results — CPU reduced pilot (2026-10-13)
+## Reduced-pilot results — CPU (2026-10-13)
 
-> **Status: CPU reduced pilot, NOT the locked preregistration 200k-step main.**
+> **Status: preregistered CPU REDUCED PILOT only. The locked 200k-step × 5-seed ×
+> 2-env MAIN run has NOT been executed (requires Linux/CUDA); nothing below is a
+> MAIN result.**
 > Env: built-in `pixel_nav` only. The 2nd prereg env `dm_control.cartpole_swingup`
 > **cannot install on Windows**: `pip install dm_control` pulls `labmaze`, which has
 > no cp3.13 wheel and requires `bazel` to build from source (`error: command 'bazel'
@@ -64,7 +66,7 @@ they belong only to the H3 paired test and never enter the H1/H2 correlation poo
 | 32 | 32 | 2 | float | -34.766 | 0.006 | 3.033 | 0.618 |
 | 32 | 32 | 2 | int8 | -37.177 | 0.006 | 3.080 | 0.619 |
 
-### Preregistered verdicts (MAIN reduced pilot)
+### Preregistered verdicts (reduced pilot; NOT the locked MAIN run)
 
 | hypothesis | threshold | observed rho | result |
 |---|---|---|---|
