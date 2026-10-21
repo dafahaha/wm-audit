@@ -238,25 +238,35 @@ Plus CI end-to-end step `python -m experiments.run_audit --mode smoke` → exit 
 
 ## 6b. CI verification (post-push)
 
-- Pushed `757e5b2..147bc84` to `origin/main` over SSH (identity
-  dafahaha / dafahaha@users.noreply.github.com).
-- GitHub Actions **CI #12** on `147bc84`: **completed successfully** (3m33s),
-  per the public Actions page. Per-step log pages are robots-blocked and the
-  anonymous API is rate-limited; both CI steps were instead executed locally
-  with exit 0 (`pytest -q` = 58 passed; `run_audit --mode smoke` = exit 0).
+- Pushed to `origin/main` over SSH (identity dafahaha /
+  dafahaha@users.noreply.github.com). Round-1 commits on top of baseline
+  `757e5b2`:
+  1. `60717ae` test(stats): pin Holm step-down monotonic floor with a dipping case
+  2. `f0db23b` fix(leaderboard): track smoke placeholder json so render works on clone
+  3. `147bc84` docs(audit): round-1 independent read-only audit report
+  4. `d4eee8e` docs(audit): record CI #12 green verification and push range
+  5. `10307de` docs: state explicitly that locked MAIN run has not been executed
+  6. `a94c2d7` docs(prereg): state locked main experiment has not been executed
+  7. `f40d956` docs: align metadata wording to single-machine CPU (final HEAD)
+- GitHub Actions: **CI #12 (#147bc84), #14 (#10307de), #15 (#a94c2d7),
+  #16 (#f40d956) all completed successfully** per the public Actions page.
+  Per-step log pages are robots-blocked and the anonymous API is rate-limited;
+  both CI steps were instead executed locally with exit 0 (`pytest -q` =
+  58 passed; `run_audit --mode smoke` = exit 0).
 - No GitHub Pages / static site exists (no `gh-pages` branch, no HTML); the
-  public leaderboard is `leaderboard/LEADERBOARD.md`, re-rendered byte-identical
-  from committed JSON and confirmed matching on `main` raw.
+  public leaderboard is `leaderboard/LEADERBOARD.md`, re-rendered from committed
+  JSON and confirmed matching on `main` raw.
 - No "main run in progress" overclaim introduced; the locked 200k×5-seed×2-env
   main experiment remains "preregistered, pending Linux/CUDA" everywhere.
 - **Honesty-wording alignment (follow-up):** the phrase "MAIN run executed as a
   CPU reduced pilot" (README status bullet, README references note,
-  `configs/audit/default.yaml` main-block header, leaderboard section/verdict
-  headers) could be read as the locked 200k×5-seed×2-env MAIN having run. It was
-  reworded to state explicitly that the locked MAIN run has NOT been executed
-  (requires Linux/CUDA) and that committed numbers are the preregistered CPU
-  reduced pilot only. No statistic, table cell, or verdict changed; the
-  leaderboard diff is prose-only (verified: no numeric line touched).
+  `configs/audit/default.yaml` main-block header, `configs/preregistration.yaml`
+  status line, leaderboard section/verdict headers, pyproject/`__init__`
+  "single-GPU" metadata) could be read as the locked 200k×5-seed×2-env MAIN
+  having run. It was reworded to state explicitly that the locked MAIN run has
+  NOT been executed (requires Linux/CUDA) and that committed numbers are the
+  preregistered CPU reduced pilot only. No statistic, table cell, or verdict
+  changed; the leaderboard diff is prose-only (verified: no numeric line touched).
 
 ---
 
