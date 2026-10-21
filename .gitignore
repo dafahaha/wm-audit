@@ -11,4 +11,7 @@ venv/
 *.ckpt
 leaderboard/results_*.json
 !leaderboard/results_main.json
+# Preserved CI-placeholder history: make_leaderboard.py renders the smoke block
+# from this file, so it must be present on a fresh clone (deterministic rerun).
+!leaderboard/results_smoke.json
 !leaderboard/.gitkeep
