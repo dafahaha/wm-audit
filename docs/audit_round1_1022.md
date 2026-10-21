@@ -74,7 +74,7 @@ statistic needed correction.
 | # | Where | Observation |
 |---|---|---|
 | P3-1 | `notebooks/10min_audit.ipynb` cells 1–3 | Stale: imports nonexistent `prereg_decision`; `rows.append(evaluate_config(...))` nests a list instead of extending; cfg omits keys the pipeline reads. Notebook is not executed in CI; left as-is. |
-| P3-2 | `pyproject.toml:8`, `wm_audit/__init__.py:1-2` | Description says "single-GPU" while the suite is a CPU single-machine audit; wording only, no behavior. |
+| P3-2 | `pyproject.toml:8`, `wm_audit/__init__.py:1-2` | Description said "single-GPU" while the suite is CPU single-machine; wording only. Fixed in the honesty-alignment pass (→ "single-machine CPU"). |
 | P3-3 | `experiments/run_audit.py:123-125` | Default `--out` is `results_smoke.json` even under `--mode main`; an operator who forgets `--out` overwrites the smoke placeholder. No main run was executed here. |
 | P3-4 | `wm_audit/policy/cem.py:29` | CEM elite selection (`np.argsort(scores)[-k:]`) has no unit test; mutation S3 (pick worst elites) survived the smoke chain, which only checks row keys/finite values. |
 | P3-5 | `wm_audit/diagnostics/perceptual.py:94` | `FixedFilterFeatures` seed/weights are not numerically pinned by any test; mutation S4 (seed 0→99) survived. Stand-in reproducibility rests on code inspection. |

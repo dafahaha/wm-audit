@@ -1,5 +1,5 @@
-"""WM-Audit: a preregistered, single-GPU audit suite disentangling world-model
-perceptual fidelity from control utility.
+"""WM-Audit: a preregistered, single-machine CPU audit suite disentangling
+world-model perceptual fidelity from control utility.
 
 Public API surface kept intentionally small; the heavy lifting lives in
 ``wm_audit.stats``, ``wm_audit.diagnostics``, ``wm_audit.envs`` and
