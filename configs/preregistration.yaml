@@ -1,7 +1,9 @@
 # WM-Audit Preregistration
 # Locked before running the main experiment. Do not tune thresholds after seeing
 # results; deviations must be documented as deviations in the paper.
-# Status: PREREGISTERED (MVP smoke). Main-experiment numbers are [IN PREPARATION].
+# Status: PREREGISTERED. The locked main experiment (200k steps x 5 seeds x
+# 2 envs) has NOT been executed (requires Linux/CUDA); no main numbers exist.
+# Committed reduced-pilot numbers are documented deviations, not main results.
 
 study: "What You Imagine Is Not What You Get"
 version: "v1-mvp"
