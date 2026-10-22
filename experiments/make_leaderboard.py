@@ -78,9 +78,21 @@ def _main_verdicts(data):
     h2_res = ("**SUPPORTED** (control composite tracks closed-loop return)"
               if h2["supports_H2"] else
               "**NOT supported** (control composite below threshold)")
-    h3_res = ("**SUPPORTED** (control/calibration degrades faster)"
-              if h3["supports_H3"] else
-              "**NOT supported** (n_pairs={})".format(h3.get("n_pairs", "-")))
+    # P3-1: H3 is only `assessable` when compression rows matched float
+    # baselines; the not_assessable branch omits supports_H3 and the
+    # degradation keys by design, so index them only when present (otherwise
+    # rendering would KeyError instead of degrading to an em dash).
+    if h3.get("status") == "assessable":
+        h3_res = ("**SUPPORTED** (control/calibration degrades faster)"
+                  if h3["supports_H3"] else
+                  "**NOT supported** (n_pairs={})".format(h3.get("n_pairs", "-")))
+        h3_observed = (
+            f"pixel_deg={h3['pixel_composite_degradation']:.3f}, "
+            f"control_deg={h3['control_composite_degradation']:.3f}"
+        )
+    else:
+        h3_res = f"**not assessable** (status={h3.get('status', 'unknown')})"
+        h3_observed = "pixel_deg=—, control_deg=—"
     lines = [
         "### Preregistered verdicts (reduced pilot; NOT the locked MAIN run)",
         "",
@@ -89,8 +101,7 @@ def _main_verdicts(data):
         f"| H1 | \\|ρ(pixel_composite, R)\\| < 0.4 | {h1['observed_rho']:.3f} | {h1_res} |",
         f"| H2 | ρ(control_composite, R) > 0.6 | {h2['observed_rho']:.3f} | {h2_res} |",
         (f"| H3 | control_deg > pixel_deg under INT8 | "
-         f"pixel_deg={h3['pixel_composite_degradation']:.3f}, "
-         f"control_deg={h3['control_composite_degradation']:.3f} | {h3_res} |"),
+         f"{h3_observed} | {h3_res} |"),
     ]
     return "\n".join(lines)
 

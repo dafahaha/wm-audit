@@ -9,7 +9,7 @@ float baselines; the `not_assessable` branch omits
 import json
 import os
 
-from experiments.make_leaderboard import _smoke_verdicts
+from experiments.make_leaderboard import _main_verdicts, _smoke_verdicts
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -69,3 +69,19 @@ def test_committed_smoke_json_still_renders_assessable_block():
     assert data["H3"]["status"] == "assessable"
     assert "pixel_deg=0.200" in out
     assert "control_deg=0.111" in out
+
+
+def test_main_verdicts_assessable_shows_degradation():
+    out = _main_verdicts(_assessable())
+    assert "pixel_deg=0.200" in out
+    assert "control_deg=0.111" in out
+    assert "NOT supported" in out
+
+
+def test_main_verdicts_not_assessable_does_not_keyerror():
+    # P3-1: the MAIN verdict table must also degrade to an em dash for the
+    # missing degradation keys instead of raising KeyError.
+    out = _main_verdicts(_not_assessable())
+    assert "not assessable" in out
+    assert "pixel_deg=—" in out
+    assert "control_deg=—" in out
