@@ -20,6 +20,13 @@
 > locked 200k×5-seed×3-cap×2-env design is ~21 CPU-hours (measured ~236 member-steps/s) and
 > dm_control is unavailable. No numbers were tuned or back-filled.
 >
+> **Recurrent caveat:** training resets the GRU state to zeros every batch
+> (`wm_audit/train/train_wm.py`); sequences are never unrolled, so no temporal
+> dependency is learned and this pilot is a per-transition stand-in. Its
+> H1/H2/H3 conclusions describe only this stand-in pipeline and must NOT be
+> extrapolated to a genuine recurrent world model with learned temporal
+> dynamics.
+>
 > Reproduce this section: `python experiments/make_leaderboard.py` regenerates it from the
 > committed `leaderboard/results_main.json`.
 

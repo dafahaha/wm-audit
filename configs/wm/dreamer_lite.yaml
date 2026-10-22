@@ -1,3 +1,6 @@
+# Documentation placeholder ONLY: no Python code loads this file. The audit
+# entrypoint reads only configs/audit/default.yaml; this yaml documents the
+# dreamer_lite capacity tiers as schema reference.
 # Dreamer-lite RSSM capacity tiers. The smoke uses the tiny tiers below; the
 # main experiment scales them up on a single GPU.
 architecture: dreamer_lite

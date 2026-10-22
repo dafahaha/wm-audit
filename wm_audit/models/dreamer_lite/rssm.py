@@ -27,6 +27,10 @@ class TinyRSSM(nn.Module):
         self.reward_head = nn.Sequential(nn.Linear(hidden, hidden), nn.ReLU(),
                                         nn.Linear(hidden, 1))
         self.cont_head = nn.Linear(hidden, 1)
+        # Weak approximation: a SINGLE scalar logvar shared by every pixel
+        # (homoscedastic), not a per-pixel/per-channel variance head. The NLL
+        # diagnostic consumed by the audit is therefore a coarse, all-pixels-
+        # shared likelihood signal, not a full heteroscedastic per-pixel model.
         self.logvar = nn.Parameter(torch.zeros(1))
 
     def init_state(self, batch: int = 1) -> torch.Tensor:

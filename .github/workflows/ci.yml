@@ -20,7 +20,11 @@ jobs:
           pip install numpy pyyaml pytest
           pip install torch --index-url https://download.pytorch.org/whl/cpu
           pip install -e . --no-deps
+          # Notebook runner for the executed tutorial (dev extra: jupyter).
+          pip install jupyter nbconvert ipykernel
       - name: Unit + smoke tests
         run: python -m pytest -v
+      - name: Execute tutorial notebook (regression guard for 10min_audit.ipynb)
+        run: jupyter nbconvert --to notebook --execute notebooks/10min_audit.ipynb --output /tmp/10min_audit.executed.ipynb --ExecutePreprocessor.timeout=600
       - name: End-to-end audit smoke
         run: python -m experiments.run_audit --mode smoke

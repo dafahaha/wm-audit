@@ -47,7 +47,11 @@ def _perceptual_on_buffer(members, obs, action, next_obs) -> dict:
         msess.append(mse(next_obs, pred))
         ssims.append(float(np.mean([ssim(next_obs[i], pred[i])
                                     for i in range(next_obs.shape[0])])))
-        nlls.append(gaussian_nll(pred, float(m.logvar.detach().item()), next_obs))
+        # Weak approximation: m.logvar is ONE scalar shared by all pixels
+        # (homoscedastic), not a per-pixel/per-channel variance head -- see
+        # rssm.py. pixel_nll is a coarse cross-config fidelity signal.
+        nlls.append(gaussian_nll(pred, float(m.logvar.detach().item()),
+                                 next_obs))
         lpipss.append(lpips_distance(next_obs, pred, fe))
         fr = fe(next_obs)
         fg = fe(pred)

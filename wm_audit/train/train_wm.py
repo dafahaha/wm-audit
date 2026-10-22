@@ -35,6 +35,11 @@ def train_wm(model: TinyRSSM, buffer: ReplayBuffer, steps: int = 200,
         rew = torch.tensor(batch["reward"], dtype=torch.float32)
         not_done = 1.0 - torch.tensor(batch["done"], dtype=torch.float32)
 
+        # NOTE: the GRU recurrent state is reset to zeros EVERY training step
+        # (batches are sampled independently, never unrolled as sequences),
+        # so the recurrent carry-over is never trained. This stand-in is a
+        # per-transition feedforward mapping; pilot conclusions do not extend
+        # to a genuine recurrent world model (documented in README/leaderboard).
         h = model.init_state(batch_size)
         obs_mean, rew_pred, cont_logit, _h = model.step(obs, act, h)
 

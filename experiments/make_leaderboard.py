@@ -97,6 +97,23 @@ def _main_verdicts(data):
 
 def _smoke_verdicts(data):
     h1, h2, h3 = data["H1"], data["H2"], data["H3"]
+    # H3 is only `assessable` when compression rows matched float baselines;
+    # the not_assessable branch (no / unmatched compression rows) omits the
+    # degradation keys and `supports_H3` by design -- render an em dash instead
+    # of indexing missing keys (which would KeyError).
+    if h3.get("status") == "assessable":
+        h3_cell = (
+            f"{h3['status']}; n_pairs={h3.get('n_pairs', '-')}; "
+            f"supports_H3={h3['supports_H3']}; "
+            f"pixel_deg={h3['pixel_composite_degradation']:.3f}, "
+            f"control_deg={h3['control_composite_degradation']:.3f}"
+        )
+    else:
+        h3_cell = (
+            f"{h3.get('status', 'unknown')}; "
+            f"n_pairs={h3.get('n_pairs', '—')}; supports_H3=—; "
+            "pixel_deg=—, control_deg=—"
+        )
     lines = [
         "### Preregistered verdicts (smoke)",
         "",
@@ -104,10 +121,7 @@ def _smoke_verdicts(data):
         "|---|---|",
         f"| H1 | observed={h1['observed_rho']:.3f}; supports_H1={h1['supports_H1']} |",
         f"| H2 | observed={h2['observed_rho']:.3f}; supports_H2={h2['supports_H2']} |",
-        (f"| H3 | {h3['status']}; n_pairs={h3.get('n_pairs', '-')}; "
-         f"supports_H3={h3['supports_H3']}; "
-         f"pixel_deg={h3['pixel_composite_degradation']:.3f}, "
-         f"control_deg={h3['control_composite_degradation']:.3f} |"),
+        f"| H3 | {h3_cell} |",
     ]
     return "\n".join(lines)
 
@@ -139,6 +153,13 @@ def main():
 > `train_steps=12000` (prereg 200000), `collect_steps=8000` (prereg 100000)** — because the
 > locked 200k×5-seed×3-cap×2-env design is ~21 CPU-hours (measured ~236 member-steps/s) and
 > dm_control is unavailable. No numbers were tuned or back-filled.
+>
+> **Recurrent caveat:** training resets the GRU state to zeros every batch
+> (`wm_audit/train/train_wm.py`); sequences are never unrolled, so no temporal
+> dependency is learned and this pilot is a per-transition stand-in. Its
+> H1/H2/H3 conclusions describe only this stand-in pipeline and must NOT be
+> extrapolated to a genuine recurrent world model with learned temporal
+> dynamics.
 >
 > Reproduce this section: `python experiments/make_leaderboard.py` regenerates it from the
 > committed `leaderboard/results_main.json`.

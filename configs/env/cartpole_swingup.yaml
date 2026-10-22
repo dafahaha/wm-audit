@@ -1,3 +1,6 @@
+# Documentation placeholder ONLY: no Python code loads this file. The audit
+# entrypoint reads only configs/audit/default.yaml; this yaml keeps the env
+# schema/fields as documentation for the optional dm_control extension path.
 # Extension path (heavy dependency). Not installed in CI; needs
 # `pip install -e .[dm_control]` (MuJoCo). Pixel observations 64x64.
 name: dm_control.cartpole_swingup

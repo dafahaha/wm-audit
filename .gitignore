@@ -5,6 +5,9 @@ __pycache__/
 venv/
 .pytest_cache/
 .ipynb_checkpoints/
+# Local scratch output for a bare `python -m experiments.run_audit` (default
+# --out replacement for the tracked leaderboard/results_*.json).
+.tmp/
 .DS_Store
 *.onnx
 *.pt

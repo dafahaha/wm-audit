@@ -56,6 +56,23 @@ diagnostic values are *inserted* into the fixed float reference distribution
 (competition/insertion rank), so adding or removing another compression lever
 cannot shift a shared pair's degradation.
 
+**Modeling scope: recurrent state is reset every batch (no learned temporal
+dependency).** During training (`wm_audit/train/train_wm.py`) the GRU hidden
+state is re-initialized to zeros at every training step
+(`h = model.init_state(batch_size)`); transitions are never unrolled into
+sequences, so the GRU's recurrent carry-over is never trained. Despite the
+RSSM/GRU wiring, the stand-in model is effectively a per-transition feedforward
+mapping. This pilot's H1/H2/H3 conclusions describe **only this single-step
+stand-in pipeline** and must NOT be extrapolated to a genuine recurrent world
+model with learned temporal dynamics.
+
+**`pixel_nll` uses one scalar global logvar (weak approximation).** The
+probabilistic head (`wm_audit/models/dreamer_lite/rssm.py`) keeps a single
+shared `logvar` parameter for every pixel instead of a per-pixel/per-channel
+variance head; `gaussian_nll` therefore reports a homoscedastic, all-pixels-
+shared NLL. It is a coarse fidelity signal for cross-config comparison, not a
+full heteroscedastic per-pixel likelihood.
+
 ## Preregistered hypotheses (see `configs/preregistration.yaml`)
 
 - **H1** — pixel fidelity *weakly* predicts closed-loop return:
@@ -94,8 +111,16 @@ pip install -e ".[dev]"
 
 pytest                      # run the audit's unit + smoke tests
 python -m experiments.run_audit        # end-to-end smoke (CPU, a few minutes)
+                            # default output: gitignored .tmp/results_smoke.json;
+                            # it NEVER overwrites the tracked leaderboard/results_smoke.json.
+                            # Pass --out <path> to write a specific/tracked file.
 python experiments\make_leaderboard.py  # render leaderboard/LEADERBOARD.md
 ```
+
+A bare `python -m experiments.run_audit` writes to the gitignored `.tmp/`
+scratch path by default (see `experiments/run_audit.py`); the committed
+`leaderboard/results_smoke.json` is preserved history and is only rewritten
+when you pass an explicit `--out`.
 
 The built-in `pixel_nav` env makes the whole chain run on CPU without
 `dm_control`. Heavy envs (`dm_control.cartpole_swingup`, Atari) live behind
@@ -141,10 +166,12 @@ MAIN run has NOT been executed; it requires Linux/CUDA.)
   *TD-MPC2: Scalable, Robust World Models for Continuous Control.* arXiv:2310.16828.
 - **Validate the Dream** — C. Oefinger et al.
   *Validate the Dream Before You Trust Its Verdict: Admissibility for World-Model
-  Simulators.* RSS 2026 Workshop on Robot World Models. arXiv:2607.07196.
+  Simulators.* arXiv:2607.07196. (Venue/workshop affiliation not independently
+  verified; cited by arXiv ID only.)
 - **Biased Dreams** — J. Berger, B. Frauenknecht, S. Trimpe, B. Leibe.
   *Biased Dreams: Limitations to Epistemic Uncertainty Quantification in Latent
-  Dynamics Models.* RLC 2026. arXiv:2604.25416.
+  Dynamics Models.* arXiv:2604.25416. (Venue affiliation not independently
+  verified; cited by arXiv ID only.)
 - **stable-worldmodel** — L. Maes et al., incl. Y. LeCun, R. Balestriero.
   *stable-worldmodel: A Platform for Reproducible World Modeling Research and
   Evaluation.* arXiv:2605.21800.

@@ -1,4 +1,6 @@
-# Built-in lightweight env used by CI / smoke. Deterministic, CPU-only.
+# Documentation placeholder ONLY: no Python code loads this file. The audit
+# entrypoint reads only configs/audit/default.yaml; this yaml documents the
+# built-in CI / smoke env schema. Deterministic, CPU-only.
 name: pixel_nav
 size: 16
 max_steps: 50

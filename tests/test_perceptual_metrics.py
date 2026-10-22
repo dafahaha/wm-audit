@@ -1,5 +1,6 @@
 """test_perceptual_metrics: MSE/SSIM/NLL ideal values on identity + known pairs."""
 import numpy as np
+import pytest
 
 from wm_audit.diagnostics.perceptual import mse, ssim, gaussian_nll
 
@@ -34,3 +35,18 @@ def test_gaussian_nll_known_mode():
     target = np.zeros(3)
     expected = 0.5 * np.log(2 * np.pi)
     assert abs(gaussian_nll(mean, logvar, target) - expected) < 1e-5
+
+
+def test_ssim_too_small_image_raises_instead_of_nan():
+    # A 4x4 image has no valid 7x7 window: must raise ValueError rather than
+    # return NaN from an empty window loop.
+    small = np.random.default_rng(3).random((4, 4, 1))
+    with pytest.raises(ValueError, match="at least 7x7"):
+        ssim(small, small)
+
+
+def test_ssim_mismatched_shape_raises():
+    a = np.zeros((16, 16, 1))
+    b = np.zeros((16, 12, 1))
+    with pytest.raises(ValueError, match="share H,W"):
+        ssim(a, b)

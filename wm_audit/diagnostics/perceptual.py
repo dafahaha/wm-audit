@@ -35,9 +35,11 @@ def _gaussian_window(size: int = 7, sigma: float = 1.5) -> np.ndarray:
 def ssim(img1, img2, data_range: float = 1.0, win_size: int = 7, sigma: float = 1.5) -> float:
     """Mean windowed SSIM. Inputs (H, W) or (H, W, C) in [0, data_range].
 
-    Identity input -> 1.0. Small images are fine; the window uses a 'valid'
-    region. This is the standard structural-similarity formula with C1/C2
-    constants (0.01 / 0.03 of the data range).
+    Identity input -> 1.0. The window uses a 'valid' region; images smaller
+    than ``win_size``×``win_size`` have no valid window and raise ValueError
+    (instead of silently returning NaN from an empty window). This is the
+    standard structural-similarity formula with C1/C2 constants (0.01 / 0.03 of
+    the data range).
     """
     img1 = np.asarray(img1, dtype=float)
     img2 = np.asarray(img2, dtype=float)
@@ -45,6 +47,15 @@ def ssim(img1, img2, data_range: float = 1.0, win_size: int = 7, sigma: float = 
         img1 = img1[..., None]
         img2 = img2[..., None]
     H, W, C = img1.shape
+    if H < win_size or W < win_size:
+        raise ValueError(
+            f"ssim needs images at least {win_size}x{win_size} for a valid "
+            f"window; got {H}x{W}. Resize/pad before calling ssim."
+        )
+    if img2.shape[:2] != (H, W):
+        raise ValueError(
+            f"ssim inputs must share H,W: {img1.shape[:2]} vs {img2.shape[:2]}"
+        )
     win = _gaussian_window(win_size, sigma)
     C1 = (0.01 * data_range) ** 2
     C2 = (0.03 * data_range) ** 2

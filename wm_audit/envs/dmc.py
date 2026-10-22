@@ -25,7 +25,17 @@ class DMControlEnv(Env):
                 "env. CI uses the built-in PixelNavEnv instead."
             ) from e
         from dm_control import suite
-        self._env = suite.load(domain_name="cartpole", task_name=task,
+        # dm_control takes domain_name and task_name SEPARATELY: the
+        # conventional "cartpole_swingup" label splits into domain="cartpole",
+        # task="swingup" (previously the whole label was passed as task_name,
+        # which suite rejects). A bare task ("swingup") keeps the cartpole
+        # default domain. size / action_repeat are render / frame-skip config
+        # used below, not suite.load arguments.
+        if "_" in task:
+            domain_name, task_name = task.split("_", 1)
+        else:
+            domain_name, task_name = "cartpole", task
+        self._env = suite.load(domain_name=domain_name, task_name=task_name,
                                task_kwargs={"random": 0})
         self.size = size
         self.action_repeat = action_repeat

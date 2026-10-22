@@ -7,8 +7,12 @@ adjusted p-values, then emits the preregistered H1/H2/H3 verdicts. The default
 `smoke` mode finishes in minutes on CPU.
 
 Usage:
-    python -m experiments.run_audit                 # smoke
+    python -m experiments.run_audit                 # smoke -> .tmp/results_smoke.json (gitignored)
     python -m experiments.run_audit --mode smoke
+    python -m experiments.run_audit --out leaderboard/results_smoke.json
+        # --out writes the committed/tracked artifact on purpose; without it
+        # the default goes to the gitignored .tmp/ scratch path and never
+        # overwrites tracked results_*.json.
 """
 from __future__ import annotations
 
@@ -21,7 +25,8 @@ import numpy as np
 import yaml
 
 # make the package importable when run as a plain script
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, ROOT)
 
 from wm_audit.audit import evaluate_config              # noqa: E402
 from wm_audit.diagnostics import (                     # noqa: E402
@@ -120,9 +125,14 @@ def main():
         print(json.dumps(dec, indent=2))
 
     out = {"rows": rows, "correlations": res, "H1": h1, "H2": h2, "H3": h3}
-    out_path = args.out or os.path.join(
-        os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-        "leaderboard", "results_smoke.json")
+    # Default output is a gitignored scratch path (.tmp/) so a bare
+    # `python -m experiments.run_audit` NEVER overwrites the tracked,
+    # committed leaderboard/results_smoke.json. Pass --out to write anywhere
+    # else (e.g. to regenerate a committed artifact on purpose).
+    if args.out:
+        out_path = args.out
+    else:
+        out_path = os.path.join(ROOT, ".tmp", f"results_{args.mode}.json")
     os.makedirs(os.path.dirname(out_path), exist_ok=True)
     with open(out_path, "w", encoding="utf-8") as f:
         json.dump(out, f, indent=2)
