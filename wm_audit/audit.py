@@ -12,7 +12,7 @@ from .train import collect_random_episodes, build_ensemble
 from .policy import close_loop_episode
 from .deploy import quantize_dynamic_int8
 from .diagnostics import (
-    mse, ssim, gaussian_nll, lpips_distance, frechet_distance,
+    mse, ssim, gaussian_nll, frechet_distance,
     FixedFilterFeatures, regression_ece, counterfactual_kendall_tau,
     ensemble_dispersion, uncertainty_error_alignment, uncertainty_ece,
 )
@@ -52,9 +52,12 @@ def _perceptual_on_buffer(members, obs, action, next_obs) -> dict:
         # rssm.py. pixel_nll is a coarse cross-config fidelity signal.
         nlls.append(gaussian_nll(pred, float(m.logvar.detach().item()),
                                  next_obs))
-        lpipss.append(lpips_distance(next_obs, pred, fe))
+        # P3-6: extract the features once and reuse them for both the LPIPS
+        # L2 distance and the Fréchet distance (previously lpips_distance
+        # extracted them and then we extracted them again for FVD).
         fr = fe(next_obs)
         fg = fe(pred)
+        lpipss.append(float(np.mean(np.sqrt(np.sum((fr - fg) ** 2, axis=-1) + 1e-12))))
         fvds.append(frechet_distance(fr, fg))
     return {
         "pixel_mse": float(np.mean(msess)),

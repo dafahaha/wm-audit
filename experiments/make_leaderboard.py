@@ -142,6 +142,11 @@ def main():
     smoke_data = _load(SMOKE_RES)
     n_main = next(iter(main_data["correlations"].values()))["n"]
     n_smoke = next(iter(smoke_data["correlations"].values()))["n"]
+    # P3-2: derive the strongest-correlation numbers from the JSON rather than
+    # hardcoding rho=0.70 / p=0.393, so the prose cannot drift from the table.
+    _unc = main_data["correlations"]["uncertainty_rho"]
+    unc_rho = _unc["rho"]
+    unc_p = _unc["p_adj"]
 
     md = f"""# WM-Audit Leaderboard
 
@@ -188,7 +193,7 @@ they belong only to the H3 paired test and never enter the H1/H2 correlation poo
 {_main_verdicts(main_data)}
 
 Read honestly: on this reduced CPU pilot, the single strongest diagnostic-vs-return correlation
-is `uncertainty_rho` (ρ=0.70, Holm-adj p=0.393 — not significant at n={n_main}). The H1 null result
+is `uncertainty_rho` (ρ={unc_rho:.2f}, Holm-adj p={unc_p:.3f} — not significant at n={n_main}). The H1 null result
 (pixel fidelity does *not* strongly track control) and the H2/H3 falsifications are publishable as
 bounded/null findings per the preregistration's honesty clause.
 
