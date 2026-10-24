@@ -1,5 +1,7 @@
 # Which world models actually *control*? We measured.
 
+![WM-Audit method overview](docs/wm_audit_pipeline.png)
+
 **WM-Audit** is a preregistered, single-machine CPU audit suite that disentangles
 world-model **perceptual fidelity** (next-frame MSE / SSIM / NLL, plus
 fixed-filter stand-ins† for LPIPS / rollout FVD) from **control utility**
