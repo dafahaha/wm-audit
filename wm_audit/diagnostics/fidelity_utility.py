@@ -203,7 +203,8 @@ def prereg_decision_h1(rho_pixel: float, threshold: float = 0.4) -> dict:
         "observed_rho": float(rho_pixel),
         "threshold": threshold,
         "supports_H1": support,
-        "note": ("H1 supported (pixel fidelity weakly tracks control utility)."
+        "note": ("H1 threshold met (weak/tentative, n=9, not statistically "
+                 "significant); pixel fidelity weakly tracks control utility."
                  if support else
                  "H1 NOT supported: pixel fidelity tracks control utility more "
                  "than preregistered -- report as a bounded/null-result."),

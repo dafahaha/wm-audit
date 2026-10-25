@@ -34,6 +34,22 @@ on Keep a Changelog; the project follows semantic versioning and is pre-1.0.
   artifact without aligning the generator would reintroduce drift (the
   generator itself is method code, out of scope for this wording pass).
 
+### H1 generator note aligned with committed JSON (S5 follow-up)
+- Closed the remaining drift the S4 block flagged: `prereg_decision_h1`
+  (`wm_audit/diagnostics/fidelity_utility.py`) no longer emits the unqualified
+  machine string "H1 supported (pixel fidelity weakly tracks control
+  utility)." Its support-branch note now reads "H1 threshold met
+  (weak/tentative, n=9, not statistically significant); pixel fidelity weakly
+  tracks control utility.", matching the README/LEADERBOARD/figure-caption
+  "threshold met — weak/tentative, not significant" wording. The H1 `note` in
+  `leaderboard/results_main.json` was updated verbatim to the same string, so
+  generator and artifact agree again.
+- **Label/presentation alignment only:** `supports_H1` and every ρ/p/CI/H2/H3
+  statistic are unchanged (git diff touches note-string lines only); the smoke
+  run takes the already-qualified not-supported branch, so
+  `leaderboard/results_smoke.json` needed no edit. The leaderboard renderer
+  never consumed the note, and `LEADERBOARD.md` re-renders byte-for-byte.
+
 ## [0.0.1] - 2026-10-22
 
 ### Fixed

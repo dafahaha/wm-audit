@@ -393,7 +393,7 @@
     "observed_rho": -0.31666666666666665,
     "threshold": 0.4,
     "supports_H1": true,
-    "note": "H1 supported (pixel fidelity weakly tracks control utility)."
+    "note": "H1 threshold met (weak/tentative, n=9, not statistically significant); pixel fidelity weakly tracks control utility."
   },
   "H2": {
     "hypothesis": "H2: rho(control_composite, R_real) > 0.6",
