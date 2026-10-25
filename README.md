@@ -102,27 +102,101 @@ full heteroscedastic per-pixel likelihood.
   200k-step × 5-seed × 2-env main has not been executed; no main numbers exist
   and none are claimed beyond the reduced-pilot measurements above.
 
+## Environment
+
+The committed numbers in `leaderboard/results_main.json` come from a **CPU-only,
+single-machine reduced pilot**. They were produced in the exact environment
+below; see `requirements-lock.txt` for the machine-readable pins.
+
+| Component | Pinned version |
+|---|---|
+| OS | Windows 11 (64-bit, x86-64) |
+| Python | CPython 3.13.x (64-bit) |
+| torch | **2.14.1+cpu** (CUDA disabled; `torch.cuda.is_available() == False`) |
+| numpy | 2.5.4 |
+| scipy | 1.18.1 (installed, but **not imported** by the audit - stats are hand-rolled) |
+| pyyaml | 6.0.3 |
+
+To reproduce that environment:
+
+```powershell
+python -m venv .venv
+.\.venv\Scripts\activate
+pip install -r requirements-lock.txt   # exact pins; torch resolves to the +cpu wheel
+pip install -e .
+```
+
+> **Honest bit-reproducibility caveat.** The rows are seeded and the stats
+> pipeline is deterministic, but torch CPU BLAS kernels, the BLAS vendor, and
+> OS/architecture can still shift the *last digits* of floating-point results
+> across machines, torch builds, or numpy versions. We therefore do **not**
+> claim bit-for-bit equality on a different OS / BLAS / torch build. What we do
+> claim is **robustness of the conclusions**: at n=9 the preregistered verdicts
+> are threshold / sign decisions (|ρ|=0.32<0.4 supports H1; ρ=0.26<0.6 rejects
+> H2; INT8 control-deg 0.35 ≤ pixel-deg 0.43 rejects H3), and none of these flip
+> on sub-permille float reordering. The lock pins the exact tested build so a
+> re-run *in this environment* matches the printed precision.
+
 ## Quickstart
 
 ```powershell
 python -m venv .venv
 .\.venv\Scripts\activate
-pip install -e .            # for CPU-only torch:
-                            # pip install torch --index-url https://download.pytorch.org/whl/cpu
+pip install -r requirements-lock.txt   # exact CPU pins (see Environment above)
 pip install -e ".[dev]"
 
-pytest                      # run the audit's unit + smoke tests
-python -m experiments.run_audit        # end-to-end smoke (CPU, a few minutes)
-                            # default output: gitignored .tmp/results_smoke.json;
-                            # it NEVER overwrites the tracked leaderboard/results_smoke.json.
-                            # Pass --out <path> to write a specific/tracked file.
-python experiments\make_leaderboard.py  # render leaderboard/LEADERBOARD.md
+pytest                                  # unit tests + CI smoke (must stay green)
+python -m experiments.run_audit         # == --mode smoke: n=6 CI placeholder (CPU, ~6-7 min)
+                                        # default output: gitignored .tmp/results_smoke.json;
+                                        # it NEVER overwrites the tracked leaderboard/results_smoke.json.
+                                        # This is NOT the committed n=9 pilot - see
+                                        # "Reproducing the n=9 reduced pilot" below.
+python experiments\make_leaderboard.py   # render leaderboard/LEADERBOARD.md
 ```
 
-A bare `python -m experiments.run_audit` writes to the gitignored `.tmp/`
-scratch path by default (see `experiments/run_audit.py`); the committed
-`leaderboard/results_smoke.json` is preserved history and is only rewritten
-when you pass an explicit `--out`.
+A bare `python -m experiments.run_audit` (equivalent to `--mode smoke`, n=6)
+writes to the gitignored `.tmp/` scratch path by default (see
+`experiments/run_audit.py`); the committed `leaderboard/results_smoke.json` is
+preserved history and is only rewritten when you pass an explicit `--out`.
+
+## Reproducing the n=9 reduced pilot
+
+There are **two distinct modes** - do not confuse them:
+
+| Mode | What it is | n (float rows into H1/H2) | Seeds | train_steps | bootstrap |
+|---|---|---|---|---|---|
+| `--mode smoke` | CI / quick sanity placeholder | **n=6** | 2 | 150 | 200 |
+| `--mode main` | the **committed reduced pilot** (`leaderboard/results_main.json`) | **n=9** | 3 | 12000 | 2000 |
+
+`--mode smoke` is a tiny CI placeholder with its own, meaningless verdicts; it
+is *not* a shorter run of the pilot. The tracked `leaderboard/results_main.json`
+was produced by `--mode main`.
+
+To regenerate the committed pilot numbers (CPU only; this is the reduced pilot,
+**not** the locked 200k-step × 5-seed × 2-env main - see Status):
+
+```powershell
+# from the repo root, with the locked venv activated:
+python -m experiments.run_audit --mode main --out leaderboard/results_main.json
+python experiments\make_leaderboard.py   # re-render leaderboard/LEADERBOARD.md from the JSON
+```
+
+- **Wall-clock (estimate, not measured):** no timer was logged during the
+  2026-10-13 pilot. From the recorded CPU throughput of ~236 member-steps/s and
+  the pilot's 9 configs × 3 ensemble members × 12000 train steps (~324k
+  member-steps) plus data collection, CEM closed-loop rollouts, and a
+  2000-resample bootstrap, expect on the order of **~25-35 minutes on a
+  comparable CPU**. (For reference, `--mode smoke` measured ~396 s / ~6.6 min on
+  this machine.) Treat both numbers as estimates, not guarantees.
+- **Expected output** (`leaderboard/results_main.json`): 18 rows = 9 float
+  baselines + 9 INT8 pairs across 3 seeds × 3 capacities; the H1/H2 correlations
+  are computed on the **n=9 float rows only** (INT8 rows enter H3 only).
+  Verdicts - **H1 supported** (|ρ(pixel_composite, R_real)| = 0.317 < 0.4),
+  **H2 not supported** (ρ(control_composite, R_real) = 0.259 < 0.6),
+  **H3 not supported** (INT8 control-composite degradation 0.352 ≤ pixel-composite
+  degradation 0.433, n_pairs=9). Re-running inside the locked environment
+  reproduces these values to printed precision; see the bit-reproducibility
+  caveat under Environment.
 
 The built-in `pixel_nav` env makes the whole chain run on CPU without
 `dm_control`. Heavy envs (`dm_control.cartpole_swingup`, Atari) live behind
