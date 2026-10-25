@@ -77,24 +77,26 @@ they belong only to the H3 paired test and never enter the H1/H2 correlation poo
 
 | hypothesis | threshold | observed rho | result |
 |---|---|---|---|
-| H1 | \|ρ(pixel_composite, R)\| < 0.4 | -0.317 | **THRESHOLD MET — weak / tentative exploratory signal only** (n=9; CI [−0.947, 0.554] crosses zero; p_raw=0.406, Holm-adj p=1.000 → **not significant; NOT an established finding**) |
+| H1 | \|ρ(pixel_composite, R)\| < 0.4 | -0.317 | **THRESHOLD MET — weak / tentative exploratory signal only** (n=9; CI [-0.947, 0.554] crosses zero; p_raw=0.406, Holm-adj p=1.000 → **not significant; NOT an established finding**) |
 | H2 | ρ(control_composite, R) > 0.6 | 0.259 | **NOT supported** (control composite below threshold) |
 | H3 | control_deg > pixel_deg under INT8 | pixel_deg=0.433, control_deg=0.352 | **NOT supported** (n_pairs=9) |
 
 Read honestly: on this reduced CPU pilot, the single strongest diagnostic-vs-return correlation
-is `uncertainty_rho` (ρ=0.70, p_raw=0.036 but Holm-adj p=0.393 — not significant at n=9). The
-H1 threshold being met (|ρ|=0.317<0.4) is a **weak, exploratory signal only** — the CI
-[−0.947, 0.554] crosses zero and Holm-adj p=1.000, so it is NOT significant and must not be read
-as an established finding that pixel fidelity predicts control. H2/H3 are bounded null/negative
-results per the preregistration's honesty clause, not falsifications.
+is `uncertainty_rho` (ρ=0.70, p_raw=0.036 but Holm-adj p=0.393 — not
+significant at n=9). The H1 threshold being met (|ρ|=0.317<0.4) is a
+**weak, exploratory signal only** — the CI [-0.947, 0.554] crosses zero and
+Holm-adj p=1.000, so it is NOT significant and must not be read as an established
+finding that pixel fidelity predicts control. H2/H3 are bounded null/negative results per the
+preregistration's honesty clause, not falsifications.
 
 **Rank-collinearity caveat (n=9).** Five diagnostics — `pixel_mse`, `pixel_nll`,
-`pixel_lpips`†, `rollout_fvd`†, `uncertainty_ece` — share *identical* ρ = 0.317, p_raw = 0.4064
-and CI [−0.554, 0.947] in the correlation table above: their 9-row rank vectors are exactly
-collinear. They are one rank pattern, not five independent confirmations; the battery therefore
-contains far fewer independent signals than its 11 rows suggest, and multi-diagnostic agreement
-must not be counted as cross-validation on this pilot (likely driven by n=9 plus deterministic,
-capacity-ordered stand-in models; to be re-checked in the locked main run).
+`pixel_lpips`†, `rollout_fvd`†, `uncertainty_ece` — share *identical* ρ=0.317,
+p_raw=0.4064 and CI [-0.554, 0.947] in the correlation table
+above: their 9-row rank vectors are exactly collinear. They are one rank pattern, not five
+independent confirmations; the battery therefore contains far fewer independent signals than its 11
+rows suggest, and multi-diagnostic agreement must not be counted as cross-validation on this pilot
+(likely driven by n=9 plus deterministic, capacity-ordered stand-in models; to be
+re-checked in the locked main run).
 
 ---
 

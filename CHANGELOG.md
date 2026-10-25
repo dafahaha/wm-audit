@@ -5,21 +5,21 @@ on Keep a Changelog; the project follows semantic versioning and is pre-1.0.
 
 ## [Unreleased] - 2026-10-26
 
-### Documented (S2 review honesty alignment — docs only)
+### Documented + rendered (S2 review honesty alignment)
 - Downgraded the unconditional "H1 SUPPORTED" label (README status/repro
   bullets, leaderboard verdict row) to a qualified **"threshold met — weak /
   tentative exploratory signal"**: on n=9 the percentile-bootstrap CI
-  [−0.947, 0.554] crosses zero, p_raw=0.406, Holm-adj p=1.000, so the
+  [-0.947, 0.554] crosses zero, p_raw=0.406, Holm-adj p=1.000, so the
   preregistered threshold firing is NOT a statistically significant finding.
 - Added a Limitations disclosure that **5/11 diagnostics** (`pixel_mse`,
   `pixel_nll`, `pixel_lpips`†, `rollout_fvd`†, `uncertainty_ece`) produce
   identical rank vectors (ρ=0.3167, p_raw=0.4064) on the 9 float rows — they
   are not independent evidence at pilot scale.
-- No committed number, `.py` file, or results JSON was touched; all figures
-  remain byte-derived from `leaderboard/results_main.json`. Note:
-  `experiments/make_leaderboard.py` still emits the mechanical "SUPPORTED"
-  string from the JSON `supports_H1` flag on re-render; aligning that generator
-  string would be a `.py` change and was out of scope for this docs-only pass.
+- **Renderer follow-up:** `experiments/make_leaderboard.py` now renders the
+  qualified H1 label itself (numbers derived from the `pixel_composite` JSON
+  row, plus the rank-collinearity caveat), so re-running the generator
+  reproduces `LEADERBOARD.md` byte-for-byte. No statistics, data, or JSON fields
+  changed; only the presentation/verdict strings.
 
 ## [0.0.1] - 2026-10-22
 

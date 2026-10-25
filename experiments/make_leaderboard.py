@@ -72,9 +72,25 @@ def _rows_table(data, *, main: bool):
 
 def _main_verdicts(data):
     h1, h2, h3 = data["H1"], data["H2"], data["H3"]
-    h1_res = ("**SUPPORTED** (pixel fidelity weakly tracks control)"
-              if h1["supports_H1"] else
-              "**NOT supported** (pixel fidelity tracks control more than preregistered)")
+    # S2 honesty alignment: the preregistered threshold firing (|rho| < 0.4) is a
+    # mechanical label only. On the n=9 pilot the bootstrap CI crosses zero and
+    # Holm-adjusted p = 1.0, so "threshold met" is NOT a significant finding. When
+    # the pixel_composite row is available, render the qualified wording (numbers
+    # derived from it, never hardcoded); fall back to the plain label only for
+    # synthetic/unit-test inputs that carry no correlations block.
+    pc = data.get("correlations", {}).get("pixel_composite")
+    if h1["supports_H1"] and pc is not None:
+        h1_res = (
+            f"**THRESHOLD MET — weak / tentative exploratory signal only** "
+            f"(n={pc['n']}; CI [{pc['ci_lo']:.3f}, {pc['ci_hi']:.3f}] crosses zero; "
+            f"p_raw={pc['p_raw']:.3f}, Holm-adj p={pc['p_adj']:.3f} → "
+            f"**not significant; NOT an established finding**)"
+        )
+    elif h1["supports_H1"]:
+        h1_res = "**SUPPORTED** (pixel fidelity weakly tracks control)"
+    else:
+        h1_res = ("**NOT supported** (pixel fidelity tracks control "
+                  "more than preregistered)")
     h2_res = ("**SUPPORTED** (control composite tracks closed-loop return)"
               if h2["supports_H2"] else
               "**NOT supported** (control composite below threshold)")
@@ -147,6 +163,12 @@ def main():
     _unc = main_data["correlations"]["uncertainty_rho"]
     unc_rho = _unc["rho"]
     unc_p = _unc["p_adj"]
+    unc_raw = _unc["p_raw"]
+    # S2: pixel_composite row drives the qualified H1 prose; the collinear group
+    # (pixel_mse == pixel_nll == pixel_lpips == rollout_fvd == uncertainty_ece
+    # at n=9) shares one rank vector, so pixel_mse's numbers stand in for all five.
+    pc = main_data["correlations"]["pixel_composite"]
+    col = main_data["correlations"]["pixel_mse"]
 
     md = f"""# WM-Audit Leaderboard
 
@@ -193,9 +215,21 @@ they belong only to the H3 paired test and never enter the H1/H2 correlation poo
 {_main_verdicts(main_data)}
 
 Read honestly: on this reduced CPU pilot, the single strongest diagnostic-vs-return correlation
-is `uncertainty_rho` (ρ={unc_rho:.2f}, Holm-adj p={unc_p:.3f} — not significant at n={n_main}). The H1 null result
-(pixel fidelity does *not* strongly track control) and the H2/H3 falsifications are publishable as
-bounded/null findings per the preregistration's honesty clause.
+is `uncertainty_rho` (ρ={unc_rho:.2f}, p_raw={unc_raw:.3f} but Holm-adj p={unc_p:.3f} — not
+significant at n={n_main}). The H1 threshold being met (|ρ|={abs(pc['rho']):.3f}<0.4) is a
+**weak, exploratory signal only** — the CI [{pc['ci_lo']:.3f}, {pc['ci_hi']:.3f}] crosses zero and
+Holm-adj p={pc['p_adj']:.3f}, so it is NOT significant and must not be read as an established
+finding that pixel fidelity predicts control. H2/H3 are bounded null/negative results per the
+preregistration's honesty clause, not falsifications.
+
+**Rank-collinearity caveat (n={n_main}).** Five diagnostics — `pixel_mse`, `pixel_nll`,
+`pixel_lpips`†, `rollout_fvd`†, `uncertainty_ece` — share *identical* ρ={col['rho']:.3f},
+p_raw={col['p_raw']:.4f} and CI [{col['ci_lo']:.3f}, {col['ci_hi']:.3f}] in the correlation table
+above: their {n_main}-row rank vectors are exactly collinear. They are one rank pattern, not five
+independent confirmations; the battery therefore contains far fewer independent signals than its 11
+rows suggest, and multi-diagnostic agreement must not be counted as cross-validation on this pilot
+(likely driven by n={n_main} plus deterministic, capacity-ordered stand-in models; to be
+re-checked in the locked main run).
 
 ---
 
