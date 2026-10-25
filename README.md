@@ -93,7 +93,11 @@ full heteroscedastic per-pixel likelihood.
   come from this reduced pilot only: env `pixel_nav` only (the 2nd prereg env
   `dm_control.cartpole_swingup` cannot install on Windows: `labmaze` needs
   `bazel`); 3 seeds × 3 capacities (n=9 float rows), INT8 lever,
-  `bootstrap=2000`. Verdicts: **H1 supported** (|ρ(pixel_composite,R)|=0.32<0.4),
+  `bootstrap=2000`. Verdicts (mechanical threshold rule as preregistered):
+  **H1 threshold met — but only a weak / tentative exploratory signal**:
+  |ρ(pixel_composite,R)|=0.317<0.4 on n=9, yet the 95% CI [−0.947, 0.554]
+  crosses zero, p_raw=0.406, Holm-adj p=1.000 → **not statistically
+  significant, NOT an established finding** (see "Limitations" below);
   **H2 not supported** (ρ(control_composite,R)=0.26<0.6), **H3 not supported**
   (INT8 control-deg 0.35 ≤ pixel-deg 0.43, n_pairs=9). This is a *reduced pilot*,
   not the locked 200k-step × 5-seed × 2-env main: seeds 3 (goal 5),
@@ -101,6 +105,38 @@ full heteroscedastic per-pixel likelihood.
 - 🚧 **Locked MAIN run pending (requires Linux/CUDA)**: the preregistered
   200k-step × 5-seed × 2-env main has not been executed; no main numbers exist
   and none are claimed beyond the reduced-pilot measurements above.
+
+## Limitations (read before citing any verdict)
+
+**1. The H1 "support" is a threshold-rule label, not an established finding.**
+On the n=9 float rows the preregistered threshold rule fires
+(|ρ(pixel_composite, R_real)| = 0.317 < 0.4), but the evidence behind it is
+weak: the percentile-bootstrap 95% CI [−0.947, 0.554] crosses zero, the
+uncorrected p_raw = 0.406, and after Holm correction p_adj = 1.000. At n=9 the
+interval is equally compatible with a moderate positive and a moderate negative
+correlation. Treat this as a **tentative / weak exploratory signal** to be
+confirmed or overturned by the locked main run — never as "we found that pixel
+fidelity predicts control".
+
+**2. The diagnostic battery is NOT independent evidence at n=9.** Five of the
+eleven diagnostics — `pixel_mse`, `pixel_nll`, `pixel_lpips`†, `rollout_fvd`†,
+`uncertainty_ece` — produce **identical Spearman ρ = 0.3167 and identical
+p_raw = 0.4064** against R_real on the 9 float rows (same CI [−0.554, 0.947]):
+their 9-element rank vectors are exactly collinear. They are therefore *one*
+rank pattern, not five independent confirmations; "the battery" at n=9 carries
+far fewer independent signals than its 11 diagnostics suggest, and
+multi-diagnostic agreement must not be counted as cross-validation. The likely
+driver is the tiny n=9 combined with deterministic, capacity-ordered stand-in
+models (a scalar-logvar NLL head and a fixed, pre-defined filter bank leave
+little independent variation between pixel metrics). This will be re-checked on
+the main run; on this pilot it is a confound, not a result.
+
+**3. Already-disclosed scopes that further bound every verdict:** single-step
+feedforward stand-in (GRU state reset every batch — no learned temporal
+dynamics); scalar homoscedastic `pixel_nll`; fixed-filter stand-ins for LPIPS /
+FVD (not learned backbones); `pixel_nav` env only; CPU, `train_steps=12000`
+(prereg 200000), 3 seeds (prereg 5). No main-run number exists; nothing here is
+extrapolated to a recurrent world model or to `dm_control`.
 
 ## Environment
 
@@ -132,9 +168,12 @@ pip install -e .
 > across machines, torch builds, or numpy versions. We therefore do **not**
 > claim bit-for-bit equality on a different OS / BLAS / torch build. What we do
 > claim is **robustness of the conclusions**: at n=9 the preregistered verdicts
-> are threshold / sign decisions (|ρ|=0.32<0.4 supports H1; ρ=0.26<0.6 rejects
-> H2; INT8 control-deg 0.35 ≤ pixel-deg 0.43 rejects H3), and none of these flip
-> on sub-permille float reordering. The lock pins the exact tested build so a
+> are threshold / sign decisions (|ρ|=0.32<0.4 meets the H1 threshold; ρ=0.26<0.6
+> rejects H2; INT8 control-deg 0.35 ≤ pixel-deg 0.43 rejects H3), and none of
+> these flip on sub-permille float reordering. Note that "meets the H1
+> threshold" is a mechanical label only — it carries **no** statistical
+> significance at n=9 (CI crosses zero, Holm-adj p=1.0; see Limitations).
+> The lock pins the exact tested build so a
 > re-run *in this environment* matches the printed precision.
 
 ## Quickstart
@@ -191,7 +230,9 @@ python experiments\make_leaderboard.py   # re-render leaderboard/LEADERBOARD.md 
 - **Expected output** (`leaderboard/results_main.json`): 18 rows = 9 float
   baselines + 9 INT8 pairs across 3 seeds × 3 capacities; the H1/H2 correlations
   are computed on the **n=9 float rows only** (INT8 rows enter H3 only).
-  Verdicts - **H1 supported** (|ρ(pixel_composite, R_real)| = 0.317 < 0.4),
+  Verdicts - **H1 threshold met: weak / tentative exploratory signal only**
+  (|ρ(pixel_composite, R_real)| = 0.317 < 0.4, but n=9, CI [−0.947, 0.554]
+  crosses zero, p_raw=0.406, Holm-adj p=1.000 → not significant),
   **H2 not supported** (ρ(control_composite, R_real) = 0.259 < 0.6),
   **H3 not supported** (INT8 control-composite degradation 0.352 ≤ pixel-composite
   degradation 0.433, n_pairs=9). Re-running inside the locked environment
