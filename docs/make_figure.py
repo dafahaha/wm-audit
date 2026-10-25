@@ -76,11 +76,12 @@ block(7.1, 3.55, 1.8, 1.95, GRAY_BLOCK, GRAY_EDGE, "Ground truth",
       ["CEM-MPC planner", "real env", "closed-loop return"], title_fs=11.5)
 
 # --- bottom: correlation & verdict ----------------------------------------- #
-block(0.6, 0.55, 13.8, 1.55, "#ffffff", BLUE, "Correlate · calibrate · verdict",
+block(0.6, 0.15, 13.8, 1.95, "#ffffff", BLUE, "Correlate · calibrate · verdict",
       ["Spearman ρ and Kendall-τb across seed/capacity · percentile-bootstrap 95% CIs · Holm-corrected p",
        "H1 pixel fidelity weakly predicts return (|ρ|<0.4)   ·   H2 control diagnostics strongly predict (ρ>0.6)   ·   "
        "H3 compression degrades calibration faster than fidelity",
-       "Reduced-pilot (2026-10-13, pixel_nav, n=9):  H1 supported (0.32)   ·   H2 not supported (0.26)   ·   "
+       "Reduced-pilot (2026-10-13, pixel_nav, n=9):  H1 threshold met (|ρ|=0.32) — weak/tentative, not significant   ·   "
+       "H2 not supported (0.26)",
        "H3 not supported (0.35 ≤ 0.43)   —   locked MAIN run pending (Linux/CUDA)"],
       title_fs=12.5, body_fs=10.5)
 
@@ -95,7 +96,7 @@ arrow(8.0, 3.5, 8.0, 2.85)             # C -> bottom
 arrow(8.0, 2.8, 8.0, 2.15)             # C -> bottom
 
 # legend note
-ax.text(7.5, 0.16, "† fixed-filter stand-ins for learned LPIPS / FVD — reproducible, not publication-grade; "
+ax.text(7.5, -0.02, "† fixed-filter stand-ins for learned LPIPS / FVD — reproducible, not publication-grade; "
                    "swap in the real trunk for main-result numbers",
         ha="center", fontsize=8.6, color=GRAY, style="italic")
 

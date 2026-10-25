@@ -21,6 +21,19 @@ on Keep a Changelog; the project follows semantic versioning and is pre-1.0.
   reproduces `LEADERBOARD.md` byte-for-byte. No statistics, data, or JSON fields
   changed; only the presentation/verdict strings.
 
+### Figure caption aligned (S4 follow-up)
+- The method-overview figure (`docs/make_figure.py` →
+  `docs/wm_audit_pipeline.png`) bottom verdict line no longer carried the
+  unqualified "H1 supported (0.32)". It now reads "H1 threshold met (|ρ|=0.32) —
+  weak/tentative, not significant", matching README/LEADERBOARD. No numbers
+  changed; PNG regenerated deterministically via the same script.
+- `leaderboard/results_main.json`'s H1 `note` field deliberately left as
+  committed: it is the mechanical string emitted by
+  `prereg_decision_h1` (`wm_audit/diagnostics/fidelity_utility.py`), is not
+  consumed by the leaderboard renderer or any test, and hand-editing the
+  artifact without aligning the generator would reintroduce drift (the
+  generator itself is method code, out of scope for this wording pass).
+
 ## [0.0.1] - 2026-10-22
 
 ### Fixed
