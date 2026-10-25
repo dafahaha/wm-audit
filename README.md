@@ -153,14 +153,26 @@ below; see `requirements-lock.txt` for the machine-readable pins.
 | scipy | 1.18.1 (installed, but **not imported** by the audit - stats are hand-rolled) |
 | pyyaml | 6.0.3 |
 
-To reproduce that environment:
+To reproduce that environment (this is the **CPU-only reproduction path**: the
+whole audit runs on CPU, and the locked torch build has CUDA disabled):
 
 ```powershell
 python -m venv .venv
 .\.venv\Scripts\activate
-pip install -r requirements-lock.txt   # exact pins; torch resolves to the +cpu wheel
+pip install -r requirements-lock.txt   # exact pins; torch==2.14.1+cpu comes from the PyTorch CPU index
 pip install -e .
 ```
+
+> **Where the torch wheel comes from.** `torch==2.14.1+cpu` is a local version
+> that is **not published on the default PyPI index**; it only exists on the
+> PyTorch CPU index (`https://download.pytorch.org/whl/cpu`). The lock file itself
+> declares `--extra-index-url https://download.pytorch.org/whl/cpu` at its top, so
+> the single `pip install -r requirements-lock.txt` command above automatically
+> fetches the +cpu wheel from that PyTorch CPU index and every other package from
+> PyPI. No extra flags are required - a clean machine running exactly the commands
+> above resolves the whole lock. (Without that in-file index declaration pip
+> fails with "No matching distribution found" for torch, because the +cpu wheel is
+> absent from plain PyPI.)
 
 > **Honest bit-reproducibility caveat.** The rows are seeded and the stats
 > pipeline is deterministic, but torch CPU BLAS kernels, the BLAS vendor, and
@@ -181,7 +193,7 @@ pip install -e .
 ```powershell
 python -m venv .venv
 .\.venv\Scripts\activate
-pip install -r requirements-lock.txt   # exact CPU pins (see Environment above)
+pip install -r requirements-lock.txt   # exact CPU pins; torch +cpu wheel via the in-lock PyTorch CPU index (see Environment above)
 pip install -e ".[dev]"
 
 pytest                                  # unit tests + CI smoke (must stay green)

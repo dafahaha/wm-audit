@@ -1,3 +1,4 @@
+--extra-index-url https://download.pytorch.org/whl/cpu
 # WM-Audit - exact runtime lock for the committed reduced-pilot numbers.
 #
 # This file pins the environment that actually produced
@@ -9,8 +10,12 @@
 #   Interpreter : CPython 3.13.x (64-bit) on Windows 11 x86-64
 #   torch       : CPU-only wheel (CUDA disabled; torch.cuda.is_available()==False)
 #
-# The CPU torch wheel resolves from the PyTorch CPU index:
-#   pip install torch==2.14.1 --index-url https://download.pytorch.org/whl/cpu
+# The CPU torch wheel resolves from the PyTorch CPU index. That index is declared
+# in-file by the --extra-index-url line at the very top of this file, so a plain
+# `pip install -r requirements-lock.txt` on a clean machine finds
+# torch==2.14.1+cpu without any extra flags. (The +cpu local version is NOT
+# published on the default PyPI index; without that line pip fails with
+# "No matching distribution found" for torch.)
 
 # --- core runtime (actually imported by the audit) ---
 numpy==2.5.4
