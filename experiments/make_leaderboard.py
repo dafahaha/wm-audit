@@ -91,7 +91,10 @@ def _main_verdicts(data, title="### Preregistered verdicts (reduced pilot; NOT t
             f"**not significant; NOT an established finding**)"
         )
     elif h1["supports_H1"]:
-        h1_res = "**SUPPORTED** (pixel fidelity weakly tracks control)"
+        # Composite stats are absent (pc is None). The threshold rule fired, but
+        # there is no CI or p-value to quote — never render a bare "SUPPORTED".
+        h1_res = ("**THRESHOLD MET — composite stats unavailable, so no CI/p "
+                  "can be quoted; not an established finding**")
     else:
         h1_res = ("**NOT supported** (pixel fidelity tracks control "
                   "more than preregistered)")

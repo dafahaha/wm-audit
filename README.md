@@ -105,7 +105,7 @@ full heteroscedastic per-pixel likelihood.
   bounded null / negative results reported as such, not falsifications.
 - 🧪 **Reduced pilot kept for reproducibility** (`leaderboard/results_main.json`):
   env `pixel_nav`, 3 seeds × 3 capacities (n=9 float rows), `train_steps=12000`,
-  H1 threshold met at ρ=0.317 but CI [−0.947, 0.554] crosses zero (p_adj=1.000),
+  H1 threshold met at ρ=−0.317 but CI [−0.947, 0.554] crosses zero (p_adj=1.000),
   H2 not supported (ρ=0.26), H3 not supported (n_pairs=9). The pilot's Windows
   constraint (`dm_control` pulls `labmaze`, which needs `bazel`) is why its 2nd
   env is absent; the main run above was executed on Linux CPU.
