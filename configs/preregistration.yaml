@@ -2,8 +2,11 @@
 # Locked before running the main experiment. Do not tune thresholds after seeing
 # results; deviations must be documented as deviations in the paper.
 # Status: PREREGISTERED. The locked main experiment (200k steps x 5 seeds x
-# 2 envs) has NOT been executed (requires Linux/CUDA); no main numbers exist.
-# Committed reduced-pilot numbers are documented deviations, not main results.
+# 2 envs) has been executed as a SINGLE-ENV SUBSET on pixel_nav (2026-11-07;
+# 30 rows = 15 float + 15 INT8; artifact: leaderboard/results_main_pixelnav_200k.json).
+# The 2nd prereg env (dm_control.cartpole_swingup) was NOT run: MuJoCo/EGL was
+# unavailable in both the Windows machine and the Linux CPU container.
+# Committed reduced-pilot numbers (n=9) are historical, not main results.
 
 study: "What You Imagine Is Not What You Get"
 version: "v1-mvp"

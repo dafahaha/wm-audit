@@ -141,9 +141,12 @@ independent variation between pixel metrics), not sample size alone.
 **3. Already-disclosed scopes that further bound every verdict:** single-step
 feedforward stand-in (GRU state reset every batch — no learned temporal
 dynamics); scalar homoscedastic `pixel_nll`; fixed-filter stand-ins for LPIPS /
-FVD (not learned backbones); `pixel_nav` env only; CPU, `train_steps=12000`
-(prereg 200000), 3 seeds (prereg 5). No main-run number exists; nothing here is
-extrapolated to a recurrent world model or to `dm_control`.
+FVD (not learned backbones); `pixel_nav` env only (the second prereg env,
+`dm_control.cartpole_swingup`, could not be installed on either machine).
+The locked-scale run in `leaderboard/results_main_pixelnav_200k.json` is CPU,
+`train_steps=200000`, 5 seeds (prereg values met, n=15 after INT8 exclusion);
+the reduced pilot in `results_main.json` is CPU, `train_steps=12000`, 3 seeds.
+Nothing here is extrapolated to a recurrent world model or to a 2-env MAIN.
 
 ## Environment
 
