@@ -14,6 +14,8 @@ venv/
 *.ckpt
 leaderboard/results_*.json
 !leaderboard/results_main.json
+# Locked-scale single-env MAIN artifact (2026-11-07); rendered as the main section.
+!leaderboard/results_main_pixelnav_200k.json
 # Preserved CI-placeholder history: make_leaderboard.py renders the smoke block
 # from this file, so it must be present on a fresh clone (deterministic rerun).
 !leaderboard/results_smoke.json

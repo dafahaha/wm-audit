@@ -2,11 +2,103 @@
 
 > Which world-model diagnostics actually predict closed-loop control utility? Lower on pixel metrics = better fidelity.
 
-## Reduced-pilot results — CPU (2026-10-13)
+## Main results — `pixel_nav` single-env subset (2026-11-07)
 
-> **Status: preregistered CPU REDUCED PILOT only. The locked 200k-step × 5-seed ×
-> 2-env MAIN run has NOT been executed (requires Linux/CUDA); nothing below is a
-> MAIN result.**
+> **Status: single-env subset of the locked preregistered MAIN — NOT the full 2-env main.**
+> The preregistration asks for 200000 train steps × 5 seeds ×
+> 3 capacity tiers × 2 envs. This run executes `pixel_nav` at the locked
+> scale; the second prereg env (`dm_control.cartpole_swingup`) is **not included** — MuJoCo/EGL unavailable in this Linux CPU container; not installed for this run.
+>
+> Kept exactly as preregistered: 200000 train steps, 100000 collect steps,
+> seeds [0, 1, 2, 3, 4], capacity tiers [[16, 16], [32, 16], [32, 32]], ensemble_size=3,
+> bootstrap=2000, INT8 lever, and the whole stats pipeline (float-only H1/H2,
+> fixed-float-ladder H3, Spearman t-approx p + Holm). Device: CPU (torch 2.14.1+cpu, torch.cuda.is_available()==False); 4-core AMD EPYC, 8 GiB RAM, Ubuntu 22.04 container; 4 worker processes, torch 1 thread each.
+>
+> **Recurrent caveat (unchanged):** training resets the GRU state to zeros every batch
+> (`wm_audit/train/train_wm.py`); sequences are never unrolled, so no temporal dependency
+> is learned and this run is a per-transition stand-in. Its H1/H2/H3 conclusions describe
+> only this stand-in pipeline and must NOT be extrapolated to a genuine recurrent world
+> model with learned temporal dynamics.
+>
+> Reproduce: `python -m experiments.run_audit --mode main --config configs/audit/main_pixel_nav_full.yaml --jobs 4 --out leaderboard/results_main_pixelnav_200k.json`, then `python experiments/make_leaderboard.py`.
+
+### Diagnostics vs R_real (float-only, n=15; percentile bootstrap=2000)
+
+| diagnostic | Spearman rho vs R_real | 95% CI | Holm-adj p |
+|---|---|---|---|
+| pixel_mse | 0.061 | [-0.562, 0.612] | 1.000 |
+| pixel_ssim | -0.043 | [-0.629, 0.596] | 1.000 |
+| pixel_nll | 0.061 | [-0.562, 0.612] | 1.000 |
+| pixel_lpips† | -0.154 | [-0.617, 0.389] | 1.000 |
+| rollout_fvd† | -0.236 | [-0.669, 0.366] | 1.000 |
+| return_ece | 0.021 | [-0.555, 0.576] | 1.000 |
+| counterfactual_tau | 0.250 | [-0.274, 0.688] | 1.000 |
+| uncertainty_rho | -0.218 | [-0.699, 0.366] | 1.000 |
+| uncertainty_ece | 0.007 | [-0.640, 0.568] | 1.000 |
+| **pixel_composite** | **0.021** | [-0.540, 0.622] | 1.000 |
+| **control_composite** | **-0.102** | [-0.590, 0.436] | 1.000 |
+
+### Rows (float baseline + INT8 variants)
+
+| hidden | embed | seed | compression | R_real | pixel_mse | return_ece | counterfactual_tau |
+|---|---|---|---|---|---|---|---|
+| 16 | 16 | 0 | float | -112.122 | 0.009 | 3.907 | 0.769 |
+| 16 | 16 | 0 | int8 | -96.570 | 0.009 | 3.888 | 0.771 |
+| 32 | 16 | 0 | float | -109.102 | 0.008 | 2.732 | 0.737 |
+| 32 | 16 | 0 | int8 | -53.197 | 0.008 | 2.701 | 0.734 |
+| 32 | 32 | 0 | float | -90.346 | 0.007 | 2.941 | 0.740 |
+| 32 | 32 | 0 | int8 | -86.308 | 0.007 | 3.105 | 0.741 |
+| 16 | 16 | 1 | float | -44.889 | 0.009 | 4.199 | 0.762 |
+| 16 | 16 | 1 | int8 | -13.361 | 0.009 | 4.768 | 0.764 |
+| 32 | 16 | 1 | float | -15.813 | 0.008 | 2.602 | 0.796 |
+| 32 | 16 | 1 | int8 | -10.642 | 0.008 | 2.931 | 0.782 |
+| 32 | 32 | 1 | float | -45.944 | 0.007 | 2.450 | 0.754 |
+| 32 | 32 | 1 | int8 | -43.609 | 0.007 | 2.069 | 0.753 |
+| 16 | 16 | 2 | float | -22.752 | 0.009 | 3.940 | 0.784 |
+| 16 | 16 | 2 | int8 | -14.086 | 0.009 | 3.767 | 0.783 |
+| 32 | 16 | 2 | float | -14.456 | 0.008 | 2.739 | 0.778 |
+| 32 | 16 | 2 | int8 | -47.041 | 0.008 | 3.031 | 0.760 |
+| 32 | 32 | 2 | float | -54.297 | 0.006 | 2.090 | 0.773 |
+| 32 | 32 | 2 | int8 | -63.061 | 0.007 | 2.494 | 0.771 |
+| 16 | 16 | 3 | float | -98.246 | 0.009 | 4.818 | 0.796 |
+| 16 | 16 | 3 | int8 | -81.628 | 0.009 | 4.956 | 0.789 |
+| 32 | 16 | 3 | float | -53.662 | 0.008 | 2.829 | 0.789 |
+| 32 | 16 | 3 | int8 | -42.076 | 0.008 | 3.112 | 0.773 |
+| 32 | 32 | 3 | float | -114.253 | 0.006 | 1.542 | 0.773 |
+| 32 | 32 | 3 | int8 | -76.796 | 0.007 | 1.777 | 0.771 |
+| 16 | 16 | 4 | float | -25.915 | 0.009 | 4.243 | 0.794 |
+| 16 | 16 | 4 | int8 | -23.634 | 0.009 | 4.092 | 0.786 |
+| 32 | 16 | 4 | float | -93.379 | 0.008 | 2.538 | 0.778 |
+| 32 | 16 | 4 | int8 | -49.674 | 0.008 | 2.885 | 0.773 |
+| 32 | 32 | 4 | float | -9.362 | 0.007 | 1.928 | 0.763 |
+| 32 | 32 | 4 | int8 | -8.117 | 0.007 | 1.930 | 0.759 |
+
+### Preregistered verdicts (main — pixel_nav single-env subset)
+
+| hypothesis | threshold | observed rho | result |
+|---|---|---|---|
+| H1 | \|ρ(pixel_composite, R)\| < 0.4 | 0.021 | **THRESHOLD MET — weak / tentative exploratory signal only** (n=15; CI [-0.540, 0.622] crosses zero; p_raw=0.939, Holm-adj p=1.000 → **not significant; NOT an established finding**) |
+| H2 | ρ(control_composite, R) > 0.6 | -0.102 | **NOT supported** (control composite below threshold) |
+| H3 | control_deg > pixel_deg under INT8 | pixel_deg=0.780, control_deg=0.422 | **NOT supported** (n_pairs=15) |
+
+Read honestly: the strongest absolute diagnostic-vs-return correlation on this run is
+`counterfactual_tau` (rho=0.250; p_raw=0.368, Holm-adj p=1.000).
+The H1 threshold firing (|rho|=0.021<0.4) remains a **weak, exploratory
+label only** — CI [-0.540, 0.622] crosses zero and
+Holm-adj p=1.000. **H2 is contradicted at this scale**:
+rho(control_composite)=-0.102, far below the preregistered 0.6 threshold
+(Holm-adj p=1.000). **H3 reverses**: under INT8 the pixel composite degrades by 0.780 while the control/calibration composite degrades by only 0.422. These are
+bounded null/negative results per the preregistration's honesty clause, reported as such.
+
+**Rank-collinearity caveat (n=15).** 2 diagnostics — `pixel_mse`, `pixel_nll` — share identical rho=0.061, p_raw=0.830 and the same CI: one rank pattern, not that many independent confirmations. Multi-diagnostic agreement must not be counted as cross-validation on this run.
+
+
+## Reduced-pilot results — CPU (2026-10-13, historical)
+
+> **Status: historical CPU REDUCED PILOT (3 seeds × 12k steps), kept for
+> reproducibility. Superseded at scale by the main single-env subset above
+> (200k steps × 5 seeds on `pixel_nav`); the full 2-env main remains
+> unexecuted.**
 > Env: built-in `pixel_nav` only. The 2nd prereg env `dm_control.cartpole_swingup`
 > **cannot install on Windows**: `pip install dm_control` pulls `labmaze`, which has
 > no cp3.13 wheel and requires `bazel` to build from source (`error: command 'bazel'
@@ -16,9 +108,11 @@
 > What WAS kept exactly as preregistered: the 3 capacity tiers, `bootstrap_resamples=2000`,
 > the INT8 lever, and the whole stats pipeline (float-only H1/H2, fixed-float-reference-ladder
 > H3, Spearman t-approx p + Holm). What was reduced and labeled: **3 seeds (prereg goal 5),
-> `train_steps=12000` (prereg 200000), `collect_steps=8000` (prereg 100000)** — because the
-> locked 200k×5-seed×3-cap×2-env design is ~21 CPU-hours (measured ~236 member-steps/s) and
-> dm_control is unavailable. No numbers were tuned or back-filled.
+> `train_steps=12000` (prereg 200000), `collect_steps=8000` (prereg 100000)** — the locked
+> design was out of the original Windows session budget (~21 CPU-hours at the measured
+> ~236 member-steps/s) and dm_control does not install there. No numbers were tuned or
+> back-filled. The runnable env has since been executed at the locked scale in the main
+> section above.
 >
 > **Recurrent caveat:** training resets the GRU state to zeros every batch
 > (`wm_audit/train/train_wm.py`); sequences are never unrolled, so no temporal

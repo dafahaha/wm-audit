@@ -80,9 +80,8 @@ block(0.6, 0.15, 13.8, 1.95, "#ffffff", BLUE, "Correlate · calibrate · verdict
       ["Spearman ρ and Kendall-τb across seed/capacity · percentile-bootstrap 95% CIs · Holm-corrected p",
        "H1 pixel fidelity weakly predicts return (|ρ|<0.4)   ·   H2 control diagnostics strongly predict (ρ>0.6)   ·   "
        "H3 compression degrades calibration faster than fidelity",
-       "Reduced-pilot (2026-10-13, pixel_nav, n=9):  H1 threshold met (|ρ|=0.32) — weak/tentative, not significant   ·   "
-       "H2 not supported (0.26)",
-       "H3 not supported (0.35 ≤ 0.43)   —   locked MAIN run pending (Linux/CUDA)"],
+       "Main single-env subset (2026-11-07, pixel_nav, 200k×5 seeds, n=15):  H1 threshold met (|ρ|=0.02) — weak, not significant   ·   H2 contradicted (−0.10)",
+       "H3 reverses under INT8 (pixel 0.78 > control 0.42)   ·   reduced pilot (2026-10-13, n=9):  H1 0.32 weak   ·   H2 0.26 not supported   ·   H3 0.35 ≤ 0.43"],
       title_fs=12.5, body_fs=10.5)
 
 # --- arrows ---------------------------------------------------------------- #

@@ -18,6 +18,10 @@ import os
 
 here = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 MAIN_RES = os.path.join(here, "leaderboard", "results_main.json")
+# Locked-scale MAIN run restricted to the one env that is runnable here
+# (pixel_nav). Kept as its own artifact so the reduced pilot stays reproducible
+# and neither file can silently stand in for the other.
+MAIN_FULL_RES = os.path.join(here, "leaderboard", "results_main_pixelnav_200k.json")
 SMOKE_RES = os.path.join(here, "leaderboard", "results_smoke.json")
 out_path = os.path.join(here, "leaderboard", "LEADERBOARD.md")
 
@@ -70,7 +74,7 @@ def _rows_table(data, *, main: bool):
     return "\n".join(lines)
 
 
-def _main_verdicts(data):
+def _main_verdicts(data, title="### Preregistered verdicts (reduced pilot; NOT the locked MAIN run)"):
     h1, h2, h3 = data["H1"], data["H2"], data["H3"]
     # S2 honesty alignment: the preregistered threshold firing (|rho| < 0.4) is a
     # mechanical label only. On the n=9 pilot the bootstrap CI crosses zero and
@@ -110,7 +114,7 @@ def _main_verdicts(data):
         h3_res = f"**not assessable** (status={h3.get('status', 'unknown')})"
         h3_observed = "pixel_deg=—, control_deg=—"
     lines = [
-        "### Preregistered verdicts (reduced pilot; NOT the locked MAIN run)",
+        title,
         "",
         "| hypothesis | threshold | observed rho | result |",
         "|---|---|---|---|",
@@ -153,9 +157,121 @@ def _smoke_verdicts(data):
     return "\n".join(lines)
 
 
+def _collinear_group(corr, anchor="pixel_mse"):
+    """Diagnostics whose (rho, CI, p_raw) equal the anchor's exactly.
+
+    Identical values mean one shared rank vector, i.e. these diagnostics are not
+    independent confirmations. Detected from the data so the disclosure follows
+    the run actually being rendered instead of a remembered pilot shape.
+    """
+    base = corr.get(anchor)
+    if base is None:
+        return []
+    tied = []
+    for d, v in corr.items():
+        if (abs(v["rho"] - base["rho"]) < 1e-12
+                and abs(v["p_raw"] - base["p_raw"]) < 1e-9
+                and abs(v["ci_lo"] - base["ci_lo"]) < 1e-9
+                and abs(v["ci_hi"] - base["ci_hi"]) < 1e-9):
+            tied.append(d)
+    return tied
+
+
+def _main_full_section(data):
+    """Locked-scale MAIN section (single-env subset) from its own committed JSON."""
+    meta = data.get("run_meta", {})
+    corr = data["correlations"]
+    n = next(iter(corr.values()))["n"]
+    envs_run = meta.get("envs_run", ["pixel_nav"])
+    envs_missing = meta.get("envs_missing", ["dm_control.cartpole_swingup"])
+    missing_reason = meta.get("missing_reason", "MuJoCo/EGL unavailable")
+    train_steps = meta.get("train_steps", "?")
+    collect_steps = meta.get("collect_steps", "?")
+    bootstrap = meta.get("bootstrap_resamples", "?")
+    ensemble_size = meta.get("ensemble_size", "?")
+    device = meta.get("device", "CPU")
+    machine = meta.get("machine", "")
+    seeds = meta.get("seeds", [])
+    caps = meta.get("capacities", [])
+    date = meta.get("date", "2026-11-07")
+
+    scalar = [d for d in corr if d not in _COMPOSITE]
+    strongest = max(scalar, key=lambda d: abs(corr[d]["rho"]))
+    s = corr[strongest]
+    pc = corr["pixel_composite"]
+    cc = corr["control_composite"]
+    h3 = data["H3"]
+    pixel_deg = h3.get("pixel_composite_degradation")
+    control_deg = h3.get("control_composite_degradation")
+
+    tied = _collinear_group(corr)
+    if len(tied) > 1:
+        tied_txt = (
+            f"**Rank-collinearity caveat (n={n}).** {len(tied)} diagnostics — "
+            + ", ".join(f"`{d}`" for d in tied)
+            + f" — share identical rho={corr[tied[0]]['rho']:.3f}, "
+            f"p_raw={corr[tied[0]]['p_raw']:.3f} and the same CI: one rank pattern, "
+            "not that many independent confirmations. Multi-diagnostic agreement "
+            "must not be counted as cross-validation on this run."
+        )
+    else:
+        tied_txt = (
+            f"**Rank-collinearity check (n={n}).** No pair of diagnostics shares an "
+            "identical rank vector on this run, so the battery's signals are not "
+            "mechanically duplicated here."
+        )
+
+    deg_txt = ""
+    if pixel_deg is not None and control_deg is not None:
+        deg_txt = (f"pixel composite degrades by {pixel_deg:.3f} while the "
+                   f"control/calibration composite degrades by only {control_deg:.3f}")
+
+    return f"""## Main results — `{envs_run[0]}` single-env subset ({date})
+
+> **Status: single-env subset of the locked preregistered MAIN — NOT the full 2-env main.**
+> The preregistration asks for {train_steps} train steps × {len(seeds)} seeds ×
+> {len(caps)} capacity tiers × 2 envs. This run executes `{envs_run[0]}` at the locked
+> scale; the second prereg env (`{envs_missing[0]}`) is **not included** — {missing_reason}.
+>
+> Kept exactly as preregistered: {train_steps} train steps, {collect_steps} collect steps,
+> seeds {seeds}, capacity tiers {caps}, ensemble_size={ensemble_size},
+> bootstrap={bootstrap}, INT8 lever, and the whole stats pipeline (float-only H1/H2,
+> fixed-float-ladder H3, Spearman t-approx p + Holm). Device: {device}; {machine}.
+>
+> **Recurrent caveat (unchanged):** training resets the GRU state to zeros every batch
+> (`wm_audit/train/train_wm.py`); sequences are never unrolled, so no temporal dependency
+> is learned and this run is a per-transition stand-in. Its H1/H2/H3 conclusions describe
+> only this stand-in pipeline and must NOT be extrapolated to a genuine recurrent world
+> model with learned temporal dynamics.
+>
+> Reproduce: `python -m experiments.run_audit --mode main --config configs/audit/main_pixel_nav_full.yaml --jobs 4 --out leaderboard/results_main_pixelnav_200k.json`, then `python experiments/make_leaderboard.py`.
+
+### Diagnostics vs R_real (float-only, n={n}; percentile bootstrap={bootstrap})
+
+{_corr_table(data, main=True)}
+
+{_rows_table(data, main=True)}
+
+{_main_verdicts(data, title="### Preregistered verdicts (main — pixel_nav single-env subset)")}
+
+Read honestly: the strongest absolute diagnostic-vs-return correlation on this run is
+`{strongest}` (rho={s['rho']:.3f}; p_raw={s['p_raw']:.3f}, Holm-adj p={s['p_adj']:.3f}).
+The H1 threshold firing (|rho|={abs(pc['rho']):.3f}<0.4) remains a **weak, exploratory
+label only** — CI [{pc['ci_lo']:.3f}, {pc['ci_hi']:.3f}] crosses zero and
+Holm-adj p={pc['p_adj']:.3f}. **H2 is contradicted at this scale**:
+rho(control_composite)={cc['rho']:.3f}, far below the preregistered 0.6 threshold
+(Holm-adj p={cc['p_adj']:.3f}). **H3 reverses**: under INT8 the {deg_txt}. These are
+bounded null/negative results per the preregistration's honesty clause, reported as such.
+
+{tied_txt}
+"""
+
+
 def main():
     main_data = _load(MAIN_RES)
     smoke_data = _load(SMOKE_RES)
+    main_full_data = _load(MAIN_FULL_RES) if os.path.exists(MAIN_FULL_RES) else None
+    main_full_section = _main_full_section(main_full_data) if main_full_data else ""
     n_main = next(iter(main_data["correlations"].values()))["n"]
     n_smoke = next(iter(smoke_data["correlations"].values()))["n"]
     # P3-2: derive the strongest-correlation numbers from the JSON rather than
@@ -174,11 +290,14 @@ def main():
 
 > Which world-model diagnostics actually predict closed-loop control utility? Lower on pixel metrics = better fidelity.
 
-## Reduced-pilot results — CPU (2026-10-13)
+{main_full_section}
 
-> **Status: preregistered CPU REDUCED PILOT only. The locked 200k-step × 5-seed ×
-> 2-env MAIN run has NOT been executed (requires Linux/CUDA); nothing below is a
-> MAIN result.**
+## Reduced-pilot results — CPU (2026-10-13, historical)
+
+> **Status: historical CPU REDUCED PILOT (3 seeds × 12k steps), kept for
+> reproducibility. Superseded at scale by the main single-env subset above
+> (200k steps × 5 seeds on `pixel_nav`); the full 2-env main remains
+> unexecuted.**
 > Env: built-in `pixel_nav` only. The 2nd prereg env `dm_control.cartpole_swingup`
 > **cannot install on Windows**: `pip install dm_control` pulls `labmaze`, which has
 > no cp3.13 wheel and requires `bazel` to build from source (`error: command 'bazel'
@@ -188,9 +307,11 @@ def main():
 > What WAS kept exactly as preregistered: the 3 capacity tiers, `bootstrap_resamples=2000`,
 > the INT8 lever, and the whole stats pipeline (float-only H1/H2, fixed-float-reference-ladder
 > H3, Spearman t-approx p + Holm). What was reduced and labeled: **3 seeds (prereg goal 5),
-> `train_steps=12000` (prereg 200000), `collect_steps=8000` (prereg 100000)** — because the
-> locked 200k×5-seed×3-cap×2-env design is ~21 CPU-hours (measured ~236 member-steps/s) and
-> dm_control is unavailable. No numbers were tuned or back-filled.
+> `train_steps=12000` (prereg 200000), `collect_steps=8000` (prereg 100000)** — the locked
+> design was out of the original Windows session budget (~21 CPU-hours at the measured
+> ~236 member-steps/s) and dm_control does not install there. No numbers were tuned or
+> back-filled. The runnable env has since been executed at the locked scale in the main
+> section above.
 >
 > **Recurrent caveat:** training resets the GRU state to zeros every batch
 > (`wm_audit/train/train_wm.py`); sequences are never unrolled, so no temporal

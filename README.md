@@ -88,48 +88,55 @@ full heteroscedastic per-pixel likelihood.
 - ✅ **Implemented and CI-tested**: stats core (Spearman / Kendall / bootstrap /
   Holm), the diagnostic battery, a deterministic built-in env, replay buffer, a
   tiny CPU RSSM, CEM-MPC close-loop, and INT8 quantization parity.
-- 🧪 **Preregistered CPU reduced pilot executed (2026-10-13); the locked MAIN
-  run has NOT been executed.** The committed numbers in `leaderboard/LEADERBOARD.md`
-  come from this reduced pilot only: env `pixel_nav` only (the 2nd prereg env
-  `dm_control.cartpole_swingup` cannot install on Windows: `labmaze` needs
-  `bazel`); 3 seeds × 3 capacities (n=9 float rows), INT8 lever,
-  `bootstrap=2000`. Verdicts (mechanical threshold rule as preregistered):
-  **H1 threshold met — but only a weak / tentative exploratory signal**:
-  |ρ(pixel_composite,R)|=0.317<0.4 on n=9, yet the 95% CI [−0.947, 0.554]
-  crosses zero, p_raw=0.406, Holm-adj p=1.000 → **not statistically
-  significant, NOT an established finding** (see "Limitations" below);
-  **H2 not supported** (ρ(control_composite,R)=0.26<0.6), **H3 not supported**
-  (INT8 control-deg 0.35 ≤ pixel-deg 0.43, n_pairs=9). This is a *reduced pilot*,
-  not the locked 200k-step × 5-seed × 2-env main: seeds 3 (goal 5),
-  `train_steps=12000` (goal 200000) for CPU wall-clock; see the config comment block.
-- 🚧 **Locked MAIN run pending (requires Linux/CUDA)**: the preregistered
-  200k-step × 5-seed × 2-env main has not been executed; no main numbers exist
-  and none are claimed beyond the reduced-pilot measurements above.
+- 🧪 **Two runs executed: a CPU reduced pilot (2026-10-13) and a locked-scale
+  single-env MAIN (2026-11-07).** The 2026-11-07 run executes the preregistered
+  200k train steps × 100k collect steps × 5 seeds × 3 capacity tiers on
+  `pixel_nav` (n=15 float rows), INT8 lever, `bootstrap=2000`, on a 4-core CPU
+  container with no GPU. **It is a single-env subset of the locked MAIN, not the
+  full 2-env main**: the second prereg env (`dm_control.cartpole_swingup`) is
+  excluded because MuJoCo/EGL is unavailable in that container. MAIN verdicts
+  (mechanical threshold rule, as preregistered):
+  **H1 threshold met — weak / tentative only**: |ρ(pixel_composite,R)|=0.021<0.4
+  on n=15, yet the 95% CI [−0.540, 0.622] crosses zero, p_raw=0.939, Holm-adj
+  p=1.000 → **not statistically significant, NOT an established finding**;
+  **H2 contradicted at this scale** (ρ(control_composite,R)=−0.102, far below
+  the 0.6 threshold); **H3 reverses** (INT8 pixel-composite degradation 0.780 is
+  *larger* than control-composite degradation 0.422; n_pairs=15). All three are
+  bounded null / negative results reported as such, not falsifications.
+- 🧪 **Reduced pilot kept for reproducibility** (`leaderboard/results_main.json`):
+  env `pixel_nav`, 3 seeds × 3 capacities (n=9 float rows), `train_steps=12000`,
+  H1 threshold met at ρ=0.317 but CI [−0.947, 0.554] crosses zero (p_adj=1.000),
+  H2 not supported (ρ=0.26), H3 not supported (n_pairs=9). The pilot's Windows
+  constraint (`dm_control` pulls `labmaze`, which needs `bazel`) is why its 2nd
+  env is absent; the main run above was executed on Linux CPU.
+- ⚠️ **Still not the full 2-env locked MAIN**: `dm_control.cartpole_swingup` is
+  not included in either run. No 2-env numbers exist and none are claimed.
 
 ## Limitations (read before citing any verdict)
 
 **1. The H1 "support" is a threshold-rule label, not an established finding.**
-On the n=9 float rows the preregistered threshold rule fires
-(|ρ(pixel_composite, R_real)| = 0.317 < 0.4), but the evidence behind it is
-weak: the percentile-bootstrap 95% CI [−0.947, 0.554] crosses zero, the
-uncorrected p_raw = 0.406, and after Holm correction p_adj = 1.000. At n=9 the
-interval is equally compatible with a moderate positive and a moderate negative
-correlation. Treat this as a **tentative / weak exploratory signal** to be
-confirmed or overturned by the locked main run — never as "we found that pixel
+Both runs fire the preregistered threshold rule, and in neither case is that
+evidence significant. On the locked-scale single-env run (n=15),
+|ρ(pixel_composite, R_real)| = 0.021 < 0.4, but the percentile-bootstrap 95% CI
+[−0.540, 0.622] crosses zero, p_raw = 0.939, Holm-adj p = 1.000. On the reduced
+pilot (n=9) the same rule fires at |ρ| = 0.317 < 0.4 with CI [−0.947, 0.554],
+p_raw = 0.406, p_adj = 1.000. At both sample sizes the interval is equally
+compatible with a moderate positive and a moderate negative correlation. Treat
+this as a **tentative / weak exploratory signal** — never as "we found that pixel
 fidelity predicts control".
 
-**2. The diagnostic battery is NOT independent evidence at n=9.** Five of the
-eleven diagnostics — `pixel_mse`, `pixel_nll`, `pixel_lpips`†, `rollout_fvd`†,
-`uncertainty_ece` — produce **identical Spearman ρ = 0.3167 and identical
-p_raw = 0.4064** against R_real on the 9 float rows (same CI [−0.554, 0.947]):
-their 9-element rank vectors are exactly collinear. They are therefore *one*
-rank pattern, not five independent confirmations; "the battery" at n=9 carries
-far fewer independent signals than its 11 diagnostics suggest, and
-multi-diagnostic agreement must not be counted as cross-validation. The likely
-driver is the tiny n=9 combined with deterministic, capacity-ordered stand-in
-models (a scalar-logvar NLL head and a fixed, pre-defined filter bank leave
-little independent variation between pixel metrics). This will be re-checked on
-the main run; on this pilot it is a confound, not a result.
+**2. The diagnostic battery is NOT independent evidence.** On the reduced pilot
+(n=9) five of the eleven diagnostics — `pixel_mse`, `pixel_nll`,
+`pixel_lpips`†, `rollout_fvd`†, `uncertainty_ece` — produce **identical
+Spearman ρ = 0.3167 and identical p_raw = 0.4064** (same CI [−0.554, 0.947]):
+their 9-element rank vectors are exactly collinear. On the locked-scale single-env
+run (n=15) the collinear group shrinks to two diagnostics (`pixel_mse`,
+`pixel_nll`, ρ=0.061, p_raw=0.830, CI [−0.562, 0.612]) — the capacity ladder now
+separates some metrics — but the battery still carries fewer independent signals
+than its 11 rows suggest, and multi-diagnostic agreement must not be counted as
+cross-validation. The remaining driver is the stand-in model design (a
+scalar-logvar NLL head and a fixed, pre-defined filter bank leave little
+independent variation between pixel metrics), not sample size alone.
 
 **3. Already-disclosed scopes that further bound every verdict:** single-step
 feedforward stand-in (GRU state reset every batch — no learned temporal
@@ -218,13 +225,9 @@ There are **two distinct modes** - do not confuse them:
 |---|---|---|---|---|---|
 | `--mode smoke` | CI / quick sanity placeholder | **n=6** | 2 | 150 | 200 |
 | `--mode main` | the **committed reduced pilot** (`leaderboard/results_main.json`) | **n=9** | 3 | 12000 | 2000 |
+| `--mode main` + `--config configs/audit/main_pixel_nav_full.yaml` | **locked-scale single-env subset** (`leaderboard/results_main_pixelnav_200k.json`); run with `--jobs 4` | **n=15** | 5 | 200000 | 2000 |
 
-`--mode smoke` is a tiny CI placeholder with its own, meaningless verdicts; it
-is *not* a shorter run of the pilot. The tracked `leaderboard/results_main.json`
-was produced by `--mode main`.
-
-To regenerate the committed pilot numbers (CPU only; this is the reduced pilot,
-**not** the locked 200k-step × 5-seed × 2-env main - see Status):
+To regenerate the reduced pilot numbers (CPU only):
 
 ```powershell
 # from the repo root, with the locked venv activated:
@@ -232,14 +235,35 @@ python -m experiments.run_audit --mode main --out leaderboard/results_main.json
 python experiments\make_leaderboard.py   # re-render leaderboard/LEADERBOARD.md from the JSON
 ```
 
-- **Wall-clock (estimate, not measured):** no timer was logged during the
+To regenerate the locked-scale single-env MAIN (Linux CPU, ~2 h on 4 cores):
+
+```bash
+python -m experiments.run_audit --mode main \
+    --config configs/audit/main_pixel_nav_full.yaml --jobs 4 \
+    --out leaderboard/results_main_pixelnav_200k.json
+python experiments/make_leaderboard.py
+```
+
+`--jobs N` runs the (seed, capacity) grid on N worker processes, each with
+torch pinned to one thread; it changes wall-clock only. The grid order and the
+statistics are identical to the serial path (verified: a parallel and a serial
+smoke run produce identical H1/H2/H3 and correlation blocks; per-row floats can
+differ in the last digits, up to ~0.3% on closed-loop `R_real`, because thread
+count changes floating-point accumulation order).
+- **Wall-clock (pilot, estimate):** no timer was logged during the
   2026-10-13 pilot. From the recorded CPU throughput of ~236 member-steps/s and
   the pilot's 9 configs × 3 ensemble members × 12000 train steps (~324k
   member-steps) plus data collection, CEM closed-loop rollouts, and a
   2000-resample bootstrap, expect on the order of **~25-35 minutes on a
   comparable CPU**. (For reference, `--mode smoke` measured ~396 s / ~6.6 min on
   this machine.) Treat both numbers as estimates, not guarantees.
-- **Expected output** (`leaderboard/results_main.json`): 18 rows = 9 float
+- **Wall-clock (main subset, measured):** the locked-scale single-env run
+  (15 configs, 4 worker processes) wrote its artifact roughly **~2 h after
+  launch** on the 4-core container (workspace clone at 03:06 → results file at
+  05:07; the container rotated the process log, so the exact launch timestamp is
+  unavailable). The serial equivalent is roughly 15-18 h, which is why `--jobs 4`
+  exists. A single-config probe (10k collect, 5k train) took 149 s.
+- **Expected output** (`leaderboard/results_main.json`, pilot): 18 rows = 9 float
   baselines + 9 INT8 pairs across 3 seeds × 3 capacities; the H1/H2 correlations
   are computed on the **n=9 float rows only** (INT8 rows enter H3 only).
   Verdicts - **H1 threshold met: weak / tentative exploratory signal only**
@@ -250,6 +274,12 @@ python experiments\make_leaderboard.py   # re-render leaderboard/LEADERBOARD.md 
   degradation 0.433, n_pairs=9). Re-running inside the locked environment
   reproduces these values to printed precision; see the bit-reproducibility
   caveat under Environment.
+- **Expected output** (`results_main_pixelnav_200k.json`, main subset): 30 rows =
+  15 float + 15 INT8 pairs across 5 seeds × 3 capacities; H1/H2 on the
+  **n=15 float rows only**. Verdicts - **H1 threshold met but weak**
+  (ρ=0.021, CI [−0.540, 0.622], p_adj=1.000), **H2 contradicted**
+  (ρ(control_composite) = −0.102), **H3 reverses** (pixel-composite degradation
+  0.780 > control-composite degradation 0.422, n_pairs=15).
 
 The built-in `pixel_nav` env makes the whole chain run on CPU without
 `dm_control`. Heavy envs (`dm_control.cartpole_swingup`, Atari) live behind
@@ -285,9 +315,11 @@ We verified both go red when the underlying math is broken.
 
 WM-Audit is a measurement layer on top of the following world models and
 recent audit-adjacent work. (IDs verified against arXiv abstract pages; the
-numbers in this repo come from the preregistered CPU reduced pilot on `pixel_nav`
-plus a downgraded CI smoke placeholder. The locked 200k-step × 5-seed × 2-env
-MAIN run has NOT been executed; it requires Linux/CUDA.)
+numbers in this repo come from two `pixel_nav` runs — the 2026-10-13 CPU reduced
+pilot and the 2026-11-07 locked-scale main (200k steps × 5 seeds × 3 capacities,
+a single-env subset of the preregistered design) — plus a downgraded CI smoke
+placeholder. The 2nd prereg env `dm_control.cartpole_swingup` is not included in
+either run.)
 
 - **DreamerV3** — D. Hafner, J. Pasukonis, J. Ba, T. Lillicrap.
   *Mastering Diverse Domains through World Models.* arXiv:2301.04104.

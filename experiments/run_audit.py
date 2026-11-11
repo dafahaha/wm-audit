@@ -41,6 +41,18 @@ def load_config(path: str) -> dict:
         return yaml.safe_load(f)
 
 
+def _eval_task(task):
+    """Worker entrypoint for one (seed, capacity) config.
+
+    Each worker pinning torch to a single thread keeps N workers on N cores from
+    oversubscribing (the tiny RSSMs are launch-bound, not compute-bound).
+    """
+    env_name, hidden, embed, seed, cfg = task
+    import torch
+    torch.set_num_threads(1)
+    return evaluate_config(env_name, hidden=hidden, embed=embed, seed=seed, cfg=cfg)
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--config", default=os.path.join(
@@ -48,6 +60,9 @@ def main():
         "configs", "audit", "default.yaml"))
     ap.add_argument("--mode", default="smoke", choices=["smoke", "main"])
     ap.add_argument("--out", default=None)
+    ap.add_argument("--jobs", type=int, default=1,
+                    help="worker processes for the (seed,capacity) grid; "
+                         "1 keeps the original serial order")
     args = ap.parse_args()
 
     cfg_all = load_config(args.config)
@@ -59,13 +74,33 @@ def main():
     print(f"WM-Audit | env={env_name} mode={args.mode}")
     print("=" * 72)
 
+    # Grid = seeds x capacities. Order is preserved exactly as the serial
+    # nested loop always did, so --jobs only changes wall-clock, not results.
+    tasks = [(env_name, hidden, embed, seed, cfg)
+             for seed in cfg["seeds"] for (hidden, embed) in cfg["capacities"]]
+
     rows = []
-    for seed in cfg["seeds"]:
-        for (hidden, embed) in cfg["capacities"]:
-            print(f"[config] hidden={hidden} embed={embed} seed={seed} ...")
+    if args.jobs > 1:
+        from concurrent.futures import ProcessPoolExecutor
+        print(f"[parallel] {len(tasks)} configs on {args.jobs} workers")
+        with ProcessPoolExecutor(max_workers=args.jobs) as ex:
+            for (_, hidden, embed, seed, _), new_rows in zip(
+                    tasks, ex.map(_eval_task, tasks)):
+                print(f"[done] hidden={hidden} embed={embed} seed={seed}", flush=True)
+                for row in new_rows:
+                    tag = row.get("compression", "float")
+                    print(f"    [{tag:>5}] R_real={row['R_real']:.3f}  "
+                          f"pixel_mse={row['pixel_mse']:.4f}  "
+                          f"return_ece={row['return_ece']:.4f}  "
+                          f"tau={row['counterfactual_tau']:.3f}")
+                rows.extend(new_rows)
+    else:
+        for (env_name_i, hidden, embed, seed, cfg_i) in tasks:
+            print(f"[config] hidden={hidden} embed={embed} seed={seed} ...",
+                  flush=True)
             # evaluate_config returns [float baseline, <compressed variant rows>...]
-            new_rows = evaluate_config(env_name, hidden=hidden, embed=embed,
-                                       seed=seed, cfg=cfg)
+            new_rows = evaluate_config(env_name_i, hidden=hidden, embed=embed,
+                                       seed=seed, cfg=cfg_i)
             for row in new_rows:
                 tag = row.get("compression", "float")
                 print(f"    [{tag:>5}] R_real={row['R_real']:.3f}  "
@@ -113,7 +148,8 @@ def main():
               f"{v['p_raw']:>9.3f}{v['p_adj']:>9.3f}")
 
     # Preregistered verdicts.
-    h1 = prereg_decision_h1(res["pixel_composite"]["rho"], threshold=0.4)
+    h1 = prereg_decision_h1(res["pixel_composite"]["rho"], threshold=0.4,
+                            n=len(float_rows))
     h2 = prereg_decision_h2(res["control_composite"]["rho"], threshold=0.6)
     h3 = prereg_decision_h3(rows)
 

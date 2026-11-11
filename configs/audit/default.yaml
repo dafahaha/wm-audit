@@ -38,11 +38,17 @@ smoke:
 
 main:
   # ==========================================================================
-  # REDUCED PILOT RUN ON THIS MACHINE (2026-10-13) ONLY.
-  # The locked preregistration MAIN run (200k steps x 5 seeds x 2 envs) has NOT
-  # been executed; it requires Linux/CUDA. This block is the CPU REDUCED PILOT,
-  # not the locked MAIN.
-  # Deviations (all documented here, none silent):
+  # CPU REDUCED PILOT CONFIG (2026-10-13). Kept as the fast default so that
+  # `--mode main` still reproduces the committed pilot in ~25-35 min.
+  #
+  # The LOCKED-SCALE run (200k train steps x 100k collect steps x 5 seeds x 3
+  # capacities, single env pixel_nav) was executed 2026-11-07 via
+  # configs/audit/main_pixel_nav_full.yaml with --jobs 4; its artifact is
+  # leaderboard/results_main_pixelnav_200k.json (n=15 float rows). The full
+  # 2-env MAIN is still NOT executed: dm_control.cartpole_swingup was
+  # unavailable in both the Windows and the Linux CPU container.
+  #
+  # Deviations in THIS pilot config (all documented, none silent):
   #   * env: pixel_nav ONLY. The 2nd prereg env dm_control.cartpole_swingup
   #     CANNOT install on Windows: `pip install dm_control` pulls `labmaze`,
   #     which has no cp3.13 wheel and requires `bazel` to build from source

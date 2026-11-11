@@ -190,20 +190,23 @@ def audit_correlations(
 
 # --- Preregistered verdicts --------------------------------------------------
 
-def prereg_decision_h1(rho_pixel: float, threshold: float = 0.4) -> dict:
+def prereg_decision_h1(rho_pixel: float, threshold: float = 0.4,
+                       n: int | None = None) -> dict:
     """H1: pixel fidelity weakly predicts closed-loop control utility.
 
     Supports H1 iff ``|rho(pixel_composite, R_real)| < threshold``. Reported
     honestly -- a null/bounded result (pixel fidelity *does* predict control) is
-    still publishable.
+    still publishable. ``n`` is the float-row pool size and is echoed in the
+    note so the wording can never drift from the run it describes.
     """
     support = bool(np.isfinite(rho_pixel) and abs(rho_pixel) < threshold)
+    n_txt = f"n={n}, " if n is not None else ""
     return {
         "hypothesis": "H1: |rho(pixel_composite, R_real)| < 0.4",
         "observed_rho": float(rho_pixel),
         "threshold": threshold,
         "supports_H1": support,
-        "note": ("H1 threshold met (weak/tentative, n=9, not statistically "
+        "note": (f"H1 threshold met (weak/tentative, {n_txt}not statistically "
                  "significant); pixel fidelity weakly tracks control utility."
                  if support else
                  "H1 NOT supported: pixel fidelity tracks control utility more "
