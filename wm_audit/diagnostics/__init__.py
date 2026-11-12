@@ -2,6 +2,7 @@
 from .perceptual import (
     mse,
     ssim,
+    ssim_batch,
     gaussian_nll,
     lpips_distance,
     frechet_distance,
@@ -28,6 +29,7 @@ from .fidelity_utility import (
 )
 
 __all__ = [
+    "ssim_batch",
     "mse", "ssim", "gaussian_nll", "lpips_distance", "frechet_distance",
     "FixedFilterFeatures",
     "regression_ece", "calibration_curve", "counterfactual_kendall_tau",

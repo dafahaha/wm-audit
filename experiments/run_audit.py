@@ -63,12 +63,28 @@ def main():
     ap.add_argument("--jobs", type=int, default=1,
                     help="worker processes for the (seed,capacity) grid; "
                          "1 keeps the original serial order")
+    ap.add_argument("--resume", action="store_true",
+                    help="reuse rows already written to <out>.partial.jsonl "
+                         "and skip the (capacity, seed) configs they cover")
+    ap.add_argument("--seeds", default=None,
+                    help="comma-separated subset of the config's seeds, e.g. "
+                         "'2'. Lets independent hosts run one shard of the grid "
+                         "each; the shards are concatenated in seed order "
+                         "before the H1/H2/H3 aggregation.")
     args = ap.parse_args()
 
     cfg_all = load_config(args.config)
     cfg = cfg_all[args.mode]
     env_name = cfg_all["env"]
     diagnostics = cfg_all["diagnostics"]
+
+    seeds = list(cfg["seeds"])
+    if args.seeds:
+        keep = {int(s) for s in args.seeds.split(",") if s.strip()}
+        unknown = keep - set(seeds)
+        if unknown:
+            raise SystemExit(f"--seeds {sorted(unknown)} not in config seeds {seeds}")
+        seeds = [s for s in seeds if s in keep]
 
     print("=" * 72)
     print(f"WM-Audit | env={env_name} mode={args.mode}")
@@ -82,9 +98,34 @@ def main():
     # and those are what the rank correlations -- hence every reported rho --
     # depend on. tests/test_parallel_consistency.py guards both halves.
     tasks = [(env_name, hidden, embed, seed, cfg)
-             for seed in cfg["seeds"] for (hidden, embed) in cfg["capacities"]]
+             for seed in seeds for (hidden, embed) in cfg["capacities"]]
 
     rows = []
+    partial_path = os.path.splitext(args.out)[0] + ".partial.jsonl"
+    if args.resume and os.path.exists(partial_path):
+        with open(partial_path) as fh:
+            for line in fh:
+                line = line.strip()
+                if line:
+                    rows.append(json.loads(line))
+        done = {(r["hidden"], r["embed"], r["seed"]) for r in rows}
+        tasks = [t for t in tasks if (t[1], t[2], t[3]) not in done]
+        print(f"[resume] {len(rows)} rows on disk, {len(tasks)} configs left",
+              flush=True)
+    else:
+        open(partial_path, "w").close()
+
+    def _append(new_rows):
+        """Persist each finished config immediately.
+
+        A config is ~hours of CPU on this host; without this, a single OOM or
+        kill loses the whole run (it happened once at 16k rows x 3 workers).
+        """
+        with open(partial_path, "a") as fh:
+            for r in new_rows:
+                fh.write(json.dumps(r) + "\n")
+            fh.flush()
+
     if args.jobs > 1:
         from concurrent.futures import ProcessPoolExecutor
         print(f"[parallel] {len(tasks)} configs on {args.jobs} workers")
@@ -99,6 +140,7 @@ def main():
                           f"return_ece={row['return_ece']:.4f}  "
                           f"tau={row['counterfactual_tau']:.3f}")
                 rows.extend(new_rows)
+                _append(new_rows)
     else:
         for (env_name_i, hidden, embed, seed, cfg_i) in tasks:
             print(f"[config] hidden={hidden} embed={embed} seed={seed} ...",
@@ -113,6 +155,7 @@ def main():
                       f"return_ece={row['return_ece']:.4f}  "
                       f"tau={row['counterfactual_tau']:.3f}")
             rows.extend(new_rows)
+            _append(new_rows)
 
     print("\nRows collected:")
     for r in rows:

@@ -12,7 +12,7 @@ from .train import collect_random_episodes, build_ensemble
 from .policy import close_loop_episode
 from .deploy import quantize_dynamic_int8
 from .diagnostics import (
-    mse, ssim, gaussian_nll, frechet_distance,
+    mse, ssim, ssim_batch, gaussian_nll, frechet_distance,
     FixedFilterFeatures, regression_ece, counterfactual_kendall_tau,
     ensemble_dispersion, uncertainty_error_alignment, uncertainty_ece,
 )
@@ -29,36 +29,74 @@ _COMPRESSION_BUILDERS = {
 }
 
 
+_EVAL_CHUNK = 512
+
+
 def _np_batch(obs: np.ndarray) -> torch.Tensor:
-    return torch.tensor(obs.reshape(obs.shape[0], -1), dtype=torch.float32)
+    """Zero-copy (B, D) float32 view of an observation buffer.
+
+    ``torch.from_numpy`` shares memory with the numpy buffer; the previous
+    ``torch.tensor`` copied the whole buffer, which is 786 MB at the locked
+    16k capacity and pushed three parallel workers over the 8 GiB host limit.
+    """
+    obs = np.ascontiguousarray(obs)
+    return torch.from_numpy(obs.reshape(obs.shape[0], -1)).to(torch.float32)
 
 
-def _perceptual_on_buffer(members, obs, action, next_obs) -> dict:
-    """Next-frame pixel diagnostics, averaged over ensemble members."""
+def _perceptual_on_buffer(members, obs, action, next_obs,
+                          chunk: int = _EVAL_CHUNK) -> dict:
+    """Next-frame pixel diagnostics, averaged over ensemble members.
+
+    Rows are evaluated in chunks of ``chunk``. ``mse``, ``gaussian_nll`` and
+    ``FixedFilterFeatures`` all upcast to float64 internally, so scoring the
+    full 16k-row buffer in one call needs several GB per worker -- with three
+    parallel workers that OOM-killed the 8 GiB host. Per-row quantities (SSIM,
+    LPIPS, features for the Frechet distance) do not depend on chunking and are
+    concatenated, so they are bit-identical; only the two global means (pixel
+    MSE and NLL) accumulate in a different summation order, ~1e-7 relative,
+    the same tolerance already documented for ``--jobs`` parity.
+    """
     B = obs.shape[0]
     fe = FixedFilterFeatures()
     msess, ssims, nlls, lpipss, fvds = [], [], [], [], []
     for m in members:
-        h = m.init_state(B)
-        with torch.no_grad():
-            mean, _rew, _cont, _h = m.step(_np_batch(obs),
-                                           torch.tensor(action, dtype=torch.float32), h)
-        pred = mean.numpy().reshape(obs.shape)
-        msess.append(mse(next_obs, pred))
-        ssims.append(float(np.mean([ssim(next_obs[i], pred[i])
-                                    for i in range(next_obs.shape[0])])))
-        # Weak approximation: m.logvar is ONE scalar shared by all pixels
-        # (homoscedastic), not a per-pixel/per-channel variance head -- see
-        # rssm.py. pixel_nll is a coarse cross-config fidelity signal.
-        nlls.append(gaussian_nll(pred, float(m.logvar.detach().item()),
-                                 next_obs))
-        # P3-6: extract the features once and reuse them for both the LPIPS
-        # L2 distance and the Fréchet distance (previously lpips_distance
-        # extracted them and then we extracted them again for FVD).
-        fr = fe(next_obs)
-        fg = fe(pred)
-        lpipss.append(float(np.mean(np.sqrt(np.sum((fr - fg) ** 2, axis=-1) + 1e-12))))
-        fvds.append(frechet_distance(fr, fg))
+        sq_sum, n_elems, nll_sum = 0.0, 0, 0.0
+        ssim_sum, ssim_n = 0.0, 0
+        lpips_rows = []
+        feats_real, feats_gen = [], []
+        for s in range(0, B, chunk):
+            e = min(s + chunk, B)
+            o, no, a = obs[s:e], next_obs[s:e], action[s:e]
+            h = m.init_state(e - s)
+            with torch.no_grad():
+                mean, _rew, _cont, _h = m.step(
+                    _np_batch(o), torch.as_tensor(a, dtype=torch.float32), h)
+            pred = mean.numpy().reshape(o.shape)
+            d = np.asarray(no, dtype=float) - np.asarray(pred, dtype=float)
+            sq_sum += float(np.sum(d * d))
+            n_elems += d.size
+            # Weak approximation: m.logvar is ONE scalar shared by all pixels
+            # (homoscedastic), not a per-pixel/per-channel variance head -- see
+            # rssm.py. pixel_nll is a coarse cross-config fidelity signal.
+            nll_sum += gaussian_nll(pred, float(m.logvar.detach().item()),
+                                    no) * (e - s)
+            ssim_sum += ssim_batch(no, pred) * (e - s)
+            ssim_n += (e - s)
+            # P3-6: extract the features once and reuse them for both the LPIPS
+            # L2 distance and the Frechet distance.
+            fr = fe(no)
+            fg = fe(pred)
+            feats_real.append(fr)
+            feats_gen.append(fg)
+            lpips_rows.extend(
+                [float(x) for x in
+                 np.atleast_1d(np.sqrt(np.sum((fr - fg) ** 2, axis=-1) + 1e-12))])
+        msess.append(sq_sum / max(n_elems, 1))
+        ssims.append(ssim_sum / max(ssim_n, 1))
+        nlls.append(nll_sum / max(B, 1))
+        lpipss.append(float(np.mean(lpips_rows)))
+        fvds.append(frechet_distance(np.concatenate(feats_real, axis=0),
+                                     np.concatenate(feats_gen, axis=0)))
     return {
         "pixel_mse": float(np.mean(msess)),
         "pixel_ssim": float(np.mean(ssims)),
@@ -68,19 +106,35 @@ def _perceptual_on_buffer(members, obs, action, next_obs) -> dict:
     }
 
 
-def _uncertainty_on_buffer(members, obs, action, next_obs) -> dict:
+def _uncertainty_on_buffer(members, obs, action, next_obs,
+                           chunk: int = _EVAL_CHUNK) -> dict:
+    """Ensemble-disagreement diagnostics, row-chunked.
+
+    ``ensemble_dispersion`` stacks the member predictions as float64, so the
+    full buffer would hold 3 x 16k x 12288 x 8 B ~ 4.7 GB per worker. Both
+    quantities computed here (the per-row predictive variance and the per-row
+    squared error) are independent per row, so chunking and then concatenating
+    in row order is bit-identical to the single-shot computation.
+    """
     B = obs.shape[0]
-    preds = []
-    for m in members:
-        h = m.init_state(B)
-        with torch.no_grad():
-            mean, _r, _c, _h = m.step(_np_batch(obs),
-                                      torch.tensor(action, dtype=torch.float32), h)
-        preds.append(mean.numpy().reshape(B, -1))
-    disp = ensemble_dispersion(preds)  # (B,)
-    target = next_obs.reshape(B, -1)
-    mean_pred = np.mean(preds, axis=0)
-    err = np.mean((mean_pred - target) ** 2, axis=1)
+    disp_parts, err_parts = [], []
+    for s in range(0, B, chunk):
+        e = min(s + chunk, B)
+        o, no, a = obs[s:e], next_obs[s:e], action[s:e]
+        n = e - s
+        preds = []
+        for m in members:
+            h = m.init_state(n)
+            with torch.no_grad():
+                mean, _r, _c, _h = m.step(
+                    _np_batch(o), torch.as_tensor(a, dtype=torch.float32), h)
+            preds.append(mean.numpy().reshape(n, -1))
+        disp_parts.append(ensemble_dispersion(preds))  # (n,)
+        target = no.reshape(n, -1)
+        mean_pred = np.mean(preds, axis=0)
+        err_parts.append(np.mean((mean_pred - target) ** 2, axis=1))
+    disp = np.concatenate(disp_parts)
+    err = np.concatenate(err_parts)
     rho = uncertainty_error_alignment(disp, err)
     uece = uncertainty_ece(disp, err)
     return {"uncertainty_rho": rho, "uncertainty_ece": float(uece)}
