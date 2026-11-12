@@ -111,6 +111,9 @@ full heteroscedastic per-pixel likelihood.
   env is absent; the main run above was executed on Linux CPU.
 - ⚠️ **Still not the full 2-env locked MAIN**: `dm_control.cartpole_swingup` is
   not included in either run. No 2-env numbers exist and none are claimed.
+- 📄 **Write-up**: `docs/workshop_null_result.md` — a workshop-style report of the
+  single-env null (abstract, preregistered design, the full 11-statistic table,
+  threats to validity, and the exact reproduction command).
 
 ## Limitations (read before citing any verdict)
 
