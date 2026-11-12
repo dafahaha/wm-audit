@@ -35,10 +35,10 @@ def block(x, y, w, h, fc, ec, title, lines, title_fs=12.5, body_fs=10.5,
     box = FancyBboxPatch((x, y), w, h, boxstyle=f"round,pad=0.02,rounding_size={rounded}",
                          fc=fc, ec=ec, lw=1.4, mutation_aspect=1.0)
     ax.add_patch(box)
-    ax.text(x + w / 2, y + h - 0.34, title, ha="center", va="top",
+    ax.text(x + w / 2, y + h - 0.30, title, ha="center", va="top",
             fontsize=title_fs, fontweight="semibold", color=title_color)
     for i, ln in enumerate(lines):
-        ax.text(x + w / 2, y + h - 0.72 - i * 0.34, ln, ha="center", va="top",
+        ax.text(x + w / 2, y + h - 0.66 - i * 0.26, ln, ha="center", va="top",
                 fontsize=body_fs, color=GRAY)
 
 
@@ -64,10 +64,10 @@ block(0.45, 3.55, 1.8, 1.95, GRAY_BLOCK, GRAY_EDGE, "Model",
 # --- column B: diagnostics ------------------------------------------------- #
 ax.text(4.35, 5.72, "2 · Diagnostic battery", ha="center", fontsize=12.5,
         fontweight="semibold", color=INK)
-block(2.9, 4.55, 2.9, 0.95, BLUE_LT, BLUE, "Perceptual fidelity",
-      ["pixel_mse · ssim · nll", "lpips† · rollout_fvd†"], body_fs=9.8)
-block(2.9, 3.35, 2.9, 0.95, BLUE_LT, BLUE, "Control + uncertainty",
-      ["return_ece · counterfactual_tau", "uncertainty_rho · uncertainty_ece"], body_fs=9.8)
+block(2.9, 4.24, 2.9, 1.20, BLUE_LT, BLUE, "Perceptual fidelity",
+      ["pixel_mse · ssim · nll", "lpips† · rollout_fvd†"], title_fs=11.5, body_fs=8.8)
+block(2.9, 2.90, 2.9, 1.20, BLUE_LT, BLUE, "Control + uncertainty",
+      ["return_ece · counterfactual_tau", "uncertainty_rho · uncertainty_ece"], title_fs=11.5, body_fs=8.8)
 
 # --- column C: closed-loop ------------------------------------------------- #
 ax.text(8.0, 5.72, "3 · Real closed-loop control", ha="center", fontsize=12.5,
@@ -78,19 +78,19 @@ block(7.1, 3.55, 1.8, 1.95, GRAY_BLOCK, GRAY_EDGE, "Ground truth",
 # --- bottom: correlation & verdict ----------------------------------------- #
 block(0.6, 0.15, 13.8, 1.95, "#ffffff", BLUE, "Correlate · calibrate · verdict",
       ["Spearman ρ and Kendall-τb across seed/capacity · percentile-bootstrap 95% CIs · Holm-corrected p",
-       "H1 pixel fidelity weakly predicts return (|ρ|<0.4)   ·   H2 control diagnostics strongly predict (ρ>0.6)   ·   "
-       "H3 compression degrades calibration faster than fidelity",
-       "Main single-env subset (2026-11-07, pixel_nav, 200k×5 seeds, n=15):  H1 threshold met (|ρ|=0.02) — weak, not significant   ·   H2 contradicted (−0.10)",
-       "H3 reverses under INT8 (pixel 0.78 > control 0.42)   ·   reduced pilot (2026-10-13, n=9):  H1 0.32 weak   ·   H2 0.26 not supported   ·   H3 0.35 ≤ 0.43"],
+        "H1 pixel fidelity weakly predicts return (|ρ|<0.4) · H2 control strongly predicts (ρ>0.6) · "
+        "H3 compression degrades calibration faster",
+        "Main (2026-11-07, pixel_nav, 200k×5 seeds, n=15): H1 |ρ|=0.02 weak, not significant · H2 contradicted (−0.10)",
+        "H3 reverses under INT8 (0.78 > 0.42) · pilot (n=9): H1 −0.32 · H2 0.26 · H3 0.35 ≤ 0.43"],
       title_fs=12.5, body_fs=10.5)
 
 # --- arrows ---------------------------------------------------------------- #
-arrow(2.3, 4.55, 2.86, 4.62)           # A -> B perceptual
-arrow(2.3, 4.15, 2.86, 4.05)           # A -> B control
-arrow(5.85, 4.95, 7.06, 4.75)          # B perceptual -> C
-arrow(5.85, 4.15, 7.06, 4.15)          # B control -> C
-arrow(4.35, 4.48, 4.35, 3.0)           # B -> bottom
-arrow(4.35, 2.85, 4.35, 2.15)          # B -> bottom (correlate)
+arrow(2.3, 4.84, 2.86, 4.84)           # A -> B perceptual
+arrow(2.3, 3.50, 2.86, 3.50)           # A -> B control
+arrow(5.82, 4.95, 7.06, 4.75)          # B perceptual -> C
+arrow(5.82, 3.70, 7.06, 4.10)          # B control -> C
+arrow(4.35, 2.88, 4.35, 2.15)          # B -> bottom
+
 arrow(8.0, 3.5, 8.0, 2.85)             # C -> bottom
 arrow(8.0, 2.8, 8.0, 2.15)             # C -> bottom
 
