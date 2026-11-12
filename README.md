@@ -251,11 +251,15 @@ python experiments/make_leaderboard.py
 ```
 
 `--jobs N` runs the (seed, capacity) grid on N worker processes, each with
-torch pinned to one thread; it changes wall-clock only. The grid order and the
-statistics are identical to the serial path (verified: a parallel and a serial
-smoke run produce identical H1/H2/H3 and correlation blocks; per-row floats can
-differ in the last digits, up to ~0.3% on closed-loop `R_real`, because thread
-count changes floating-point accumulation order).
+torch pinned to one thread. Row order is preserved, so the grid and the
+correlation block are the same either way — but the per-row floats are **not
+bit-identical**: thread count changes floating-point accumulation order, and a
+serial-versus-parallel probe on the smoke grid measured a worst relative
+difference of ~1.5e-7 across the diagnostics. Closed-loop `R_real` happened to
+come out bit-identical on that grid because the CEM argmax never moved; a
+different grid could flip an argmax and move it further. `tests/test_parallel_consistency.py`
+pins both halves of this: `R_real` must match exactly, every other diagnostic
+within 1e-5 relative, and the resulting rho within 1e-9.
 - **Wall-clock (pilot, estimate):** no timer was logged during the
   2026-10-13 pilot. From the recorded CPU throughput of ~236 member-steps/s and
   the pilot's 9 configs × 3 ensemble members × 12000 train steps (~324k

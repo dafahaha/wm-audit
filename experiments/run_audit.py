@@ -75,7 +75,12 @@ def main():
     print("=" * 72)
 
     # Grid = seeds x capacities. Order is preserved exactly as the serial
-    # nested loop always did, so --jobs only changes wall-clock, not results.
+    # nested loop always did, so --jobs only changes wall-clock -- with one
+    # caveat: each worker pins torch to one thread while the serial path does
+    # not, so reduction order can move the last few bits (measured worst case
+    # ~1.5e-7 relative on the smoke grid). Row order and R_real are unaffected,
+    # and those are what the rank correlations -- hence every reported rho --
+    # depend on. tests/test_parallel_consistency.py guards both halves.
     tasks = [(env_name, hidden, embed, seed, cfg)
              for seed in cfg["seeds"] for (hidden, embed) in cfg["capacities"]]
 
