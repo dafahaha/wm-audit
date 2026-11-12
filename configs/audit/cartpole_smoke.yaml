@@ -1,0 +1,42 @@
+# Tiny dm_control cartpole probe (NOT a scientific config).
+#
+# Purpose: verify that the optional dm_control extension path runs end-to-end on
+# a headless Linux CPU runner (MuJoCo + OSMesa rendering) before spending
+# runner-hours on the locked-scale 2-env MAIN. Scale is deliberately trivial:
+# 300 collect steps, 20 train steps, 1 member, 1 config triple.
+#
+# The locked-scale cartpole MAIN uses the preregistered values in
+# configs/preregistration.yaml (200k train / 100k collect / 3 members / 15
+# triples); this file exists only to exercise the code path in CI.
+env: dm_control.cartpole_swingup
+diagnostics:
+  - pixel_mse
+  - pixel_ssim
+  - pixel_nll
+  - pixel_lpips
+  - rollout_fvd
+  - return_ece
+  - counterfactual_tau
+  - uncertainty_rho
+  - uncertainty_ece
+return_key: R_real
+
+smoke:
+  buffer_capacity: 300
+  collect_steps: 300
+  data_seed: 123
+  ensemble_size: 1
+  train_steps: 20
+  batch_size: 32
+  lr: 0.002
+  calib_segments: 4
+  calib_horizon: 4
+  cf_pairs: 4
+  cem_horizon: 3
+  cem_candidates: 8
+  cem_elites: 2
+  cem_iters: 1
+  capacities: [[16, 16]]
+  seeds: [0]
+  bootstrap_resamples: 50
+  compression_levers: [int8]

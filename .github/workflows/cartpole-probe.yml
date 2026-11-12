@@ -1,0 +1,77 @@
+name: cartpole-probe
+
+# One-off feasibility probe for the optional dm_control extension path.
+# Trigger: pushing to the throwaway branch ci/cartpole-probe (keeps main's CI
+# untouched). Answers three questions before any locked-scale run:
+#   1. does `pip install dm_control` build on a stock ubuntu-latest runner?
+#   2. does headless rendering work via OSMesa (MUJOCO_GL=osmesa)?
+#   3. what is the real per-step cost (render + step) on that runner?
+# It then runs the whole audit battery at toy scale on cartpole_swingup.
+
+on:
+  push:
+    branches: [ci/cartpole-probe]
+  workflow_dispatch:
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install light deps (CPU torch)
+        run: |
+          python -m pip install --upgrade pip
+          pip install numpy pyyaml scipy
+          pip install torch --index-url https://download.pytorch.org/whl/cpu
+
+      - name: Install dm_control (MuJoCo)
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq libosmesa6 libglew-dev freeglut3-dev || true
+          pip install dm_control
+          python -c "import dm_control, mujoco; print('dm_control', getattr(dm_control, '__version__', '?'), '| mujoco', mujoco.__version__)"
+
+      - name: Render and step timing under OSMesa
+        env:
+          MUJOCO_GL: osmesa
+        run: |
+          python - <<'PY'
+          import time
+          import numpy as np
+          from wm_audit.envs.dmc import DMControlEnv
+
+          env = DMControlEnv()
+          obs = env.reset(seed=0)
+          print("obs", obs.shape, obs.dtype, "mean=%.4f" % float(obs.mean()))
+          n = 300
+          t0 = time.perf_counter()
+          for _ in range(n):
+              obs, reward, done, info = env.step(np.zeros(env.action_dim))
+              if done:
+                  obs = env.reset(seed=0)
+          dt = time.perf_counter() - t0
+          print("PER_STEP | %.2fs for %d steps -> %.1f ms/step" % (dt, n, dt * 1000.0 / n))
+          print("PER_CONFIG | 100k collect steps -> %.1f min" % (dt * 100000.0 / n / 60.0))
+          PY
+
+      - name: End-to-end battery probe (cartpole, toy scale)
+        env:
+          MUJOCO_GL: osmesa
+        run: |
+          python -m experiments.run_audit --config configs/audit/cartpole_smoke.yaml --mode smoke --out /tmp/probe.json
+          python - <<'PY'
+          import json
+          d = json.load(open("/tmp/probe.json"))
+          print("rows:", len(d.get("rows", [])))
+          print("H1:", d.get("H1", {}).get("supports_H1"), "| H2:", d.get("H2", {}).get("supports_H2"), "| H3 assessable:", d.get("H3", {}).get("assessable"))
+          k = d["rows"][0]
+          print("row keys:", sorted(k.keys()))
+          print("pixel_composite:", k.get("pixel_composite"), "| R_real:", k.get("R_real"))
+          PY
