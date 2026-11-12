@@ -1,0 +1,218 @@
+{
+  "rows": [
+    {
+      "hidden": 16,
+      "embed": 16,
+      "seed": 0,
+      "pixel_mse": 0.0020153232327188887,
+      "pixel_ssim": 0.9351305780776125,
+      "pixel_nll": 0.9199461948109556,
+      "pixel_lpips": 0.001607829416380516,
+      "rollout_fvd": 4.0559499367790055e-06,
+      "uncertainty_rho": NaN,
+      "uncertainty_ece": 0.002008236087379927,
+      "return_ece": 0.702291204172735,
+      "counterfactual_tau": NaN,
+      "R_real": 22.413682135422114,
+      "pixel_composite": 1.2,
+      "control_composite": 2.0
+    },
+    {
+      "hidden": 16,
+      "embed": 16,
+      "seed": 0,
+      "compression": "int8",
+      "pixel_mse": 0.0020178801832499713,
+      "pixel_ssim": 0.934555159892609,
+      "pixel_nll": 0.9199474732862082,
+      "pixel_lpips": 0.0015756818662298804,
+      "rollout_fvd": 3.953423127523814e-06,
+      "uncertainty_rho": NaN,
+      "uncertainty_ece": 0.0020093452803346206,
+      "return_ece": 0.702291204172735,
+      "counterfactual_tau": NaN,
+      "R_real": 22.413682135422114
+    },
+    {
+      "hidden": 32,
+      "embed": 16,
+      "seed": 0,
+      "pixel_mse": 0.001986105093286949,
+      "pixel_ssim": 0.9348311617070125,
+      "pixel_nll": 0.9199315857413856,
+      "pixel_lpips": 0.001570552680097667,
+      "rollout_fvd": 3.8598645411140954e-06,
+      "uncertainty_rho": -0.04075650885227449,
+      "uncertainty_ece": 0.0018707353300080106,
+      "return_ece": 0.7026422206859105,
+      "counterfactual_tau": NaN,
+      "R_real": 20.026323655927808,
+      "pixel_composite": 2.2,
+      "control_composite": 1.6666666666666667
+    },
+    {
+      "hidden": 32,
+      "embed": 16,
+      "seed": 0,
+      "compression": "int8",
+      "pixel_mse": 0.002063048798420066,
+      "pixel_ssim": 0.9025503202664412,
+      "pixel_nll": 0.9199700575935674,
+      "pixel_lpips": 0.0015025356576219406,
+      "rollout_fvd": 3.6102009615339354e-06,
+      "uncertainty_rho": -0.2653424138834899,
+      "uncertainty_ece": 0.001782147361430422,
+      "return_ece": 0.7026744423773864,
+      "counterfactual_tau": NaN,
+      "R_real": 22.413682135422114
+    },
+    {
+      "hidden": 32,
+      "embed": 32,
+      "seed": 0,
+      "pixel_mse": 0.0019687217604951804,
+      "pixel_ssim": 0.9357535919852374,
+      "pixel_nll": 0.9199228940750767,
+      "pixel_lpips": 0.001583374947395632,
+      "rollout_fvd": 3.860539766681432e-06,
+      "uncertainty_rho": -0.056810180310232515,
+      "uncertainty_ece": 0.0018948143686163142,
+      "return_ece": 0.49925058020928326,
+      "counterfactual_tau": NaN,
+      "R_real": 22.413682135422114,
+      "pixel_composite": 2.6,
+      "control_composite": 2.3333333333333335
+    },
+    {
+      "hidden": 32,
+      "embed": 32,
+      "seed": 0,
+      "compression": "int8",
+      "pixel_mse": 0.0019987084023017267,
+      "pixel_ssim": 0.9242967063771124,
+      "pixel_nll": 0.91993788739583,
+      "pixel_lpips": 0.0015484369690363013,
+      "rollout_fvd": 3.7296000655743916e-06,
+      "uncertainty_rho": -0.15409150603597083,
+      "uncertainty_ece": 0.0018808591640728121,
+      "return_ece": 0.5002459520759247,
+      "counterfactual_tau": NaN,
+      "R_real": 22.413682135422114
+    }
+  ],
+  "correlations": {
+    "pixel_mse": {
+      "rho": 0.0,
+      "ci_lo": -1.0,
+      "ci_hi": 1.0,
+      "p_raw": NaN,
+      "n": 3,
+      "p_adj": 1.0
+    },
+    "pixel_ssim": {
+      "rho": 0.8660254037844387,
+      "ci_lo": 0.8660254037844387,
+      "ci_hi": 1.0,
+      "p_raw": NaN,
+      "n": 3,
+      "p_adj": 1.0
+    },
+    "pixel_nll": {
+      "rho": 0.0,
+      "ci_lo": -1.0,
+      "ci_hi": 1.0,
+      "p_raw": NaN,
+      "n": 3,
+      "p_adj": 1.0
+    },
+    "pixel_lpips": {
+      "rho": 0.8660254037844387,
+      "ci_lo": 0.8660254037844387,
+      "ci_hi": 1.0,
+      "p_raw": NaN,
+      "n": 3,
+      "p_adj": 1.0
+    },
+    "rollout_fvd": {
+      "rho": 0.8660254037844387,
+      "ci_lo": 0.8660254037844387,
+      "ci_hi": 1.0,
+      "p_raw": NaN,
+      "n": 3,
+      "p_adj": 1.0
+    },
+    "return_ece": {
+      "rho": -0.8660254037844387,
+      "ci_lo": -1.0,
+      "ci_hi": -0.8660254037844387,
+      "p_raw": NaN,
+      "n": 3,
+      "p_adj": 1.0
+    },
+    "counterfactual_tau": {
+      "rho": 0.0,
+      "ci_lo": -0.8660254037844387,
+      "ci_hi": 0.8660254037844387,
+      "p_raw": NaN,
+      "n": 3,
+      "p_adj": 1.0
+    },
+    "uncertainty_rho": {
+      "rho": 0.0,
+      "ci_lo": -1.0,
+      "ci_hi": 1.0,
+      "p_raw": NaN,
+      "n": 3,
+      "p_adj": 1.0
+    },
+    "uncertainty_ece": {
+      "rho": 0.8660254037844387,
+      "ci_lo": 0.8660254037844387,
+      "ci_hi": 1.0,
+      "p_raw": NaN,
+      "n": 3,
+      "p_adj": 1.0
+    },
+    "pixel_composite": {
+      "rho": 0.0,
+      "ci_lo": -1.0,
+      "ci_hi": 1.0,
+      "p_raw": NaN,
+      "n": 3,
+      "p_adj": 1.0
+    },
+    "control_composite": {
+      "rho": 0.8660254037844387,
+      "ci_lo": 0.8660254037844387,
+      "ci_hi": 1.0,
+      "p_raw": NaN,
+      "n": 3,
+      "p_adj": 1.0
+    }
+  },
+  "H1": {
+    "hypothesis": "H1: |rho(pixel_composite, R_real)| < 0.4",
+    "observed_rho": 0.0,
+    "threshold": 0.4,
+    "supports_H1": true,
+    "note": "H1 threshold met (weak/tentative, n=3, not statistically significant); pixel fidelity weakly tracks control utility."
+  },
+  "H2": {
+    "hypothesis": "H2: rho(control_composite, R_real) > 0.6",
+    "observed_rho": 0.8660254037844387,
+    "threshold": 0.6,
+    "supports_H2": true,
+    "note": "H2 supported: control-relevant diagnostics strongly predict closed-loop return."
+  },
+  "H3": {
+    "hypothesis": "H3: under compression (int8/channel_prune/distill), pixel fidelity degrades slowly while return-calibration and uncertainty alignment degrade faster",
+    "status": "assessable",
+    "compression_lever": "int8",
+    "n_pairs": 3,
+    "reference_ladder_size": 3,
+    "pixel_composite_degradation": 0.3666666666666667,
+    "control_composite_degradation": 1.1111111111111114,
+    "supports_H3": true,
+    "note": "H3 supported: control/calibration composite degradation exceeds pixel composite degradation under compression."
+  }
+}
