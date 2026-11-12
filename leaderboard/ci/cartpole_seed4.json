@@ -1,0 +1,218 @@
+{
+  "rows": [
+    {
+      "hidden": 16,
+      "embed": 16,
+      "seed": 4,
+      "pixel_mse": 0.002015564183924888,
+      "pixel_ssim": 0.935394426897755,
+      "pixel_nll": 0.9199463152865572,
+      "pixel_lpips": 0.001614466754005936,
+      "rollout_fvd": 4.080576967811355e-06,
+      "uncertainty_rho": NaN,
+      "uncertainty_ece": 0.0020082297660237803,
+      "return_ece": 0.6979498787863957,
+      "counterfactual_tau": NaN,
+      "R_real": 18.318293329560678,
+      "pixel_composite": 1.0,
+      "control_composite": 1.6666666666666667
+    },
+    {
+      "hidden": 16,
+      "embed": 16,
+      "seed": 4,
+      "compression": "int8",
+      "pixel_mse": 0.0020173771296043428,
+      "pixel_ssim": 0.9349424375447777,
+      "pixel_nll": 0.9199472217593879,
+      "pixel_lpips": 0.0015933831819660664,
+      "rollout_fvd": 4.013241669459532e-06,
+      "uncertainty_rho": NaN,
+      "uncertainty_ece": 0.00200837930273535,
+      "return_ece": 0.6979498787863957,
+      "counterfactual_tau": NaN,
+      "R_real": 18.318293329560678
+    },
+    {
+      "hidden": 32,
+      "embed": 16,
+      "seed": 4,
+      "pixel_mse": 0.0019714250126301983,
+      "pixel_ssim": 0.9355090474954837,
+      "pixel_nll": 0.9199242457011305,
+      "pixel_lpips": 0.0015878223970954616,
+      "rollout_fvd": 3.887474252076967e-06,
+      "uncertainty_rho": 0.036852554646583206,
+      "uncertainty_ece": 0.0018913857969215782,
+      "return_ece": 0.5106134190304982,
+      "counterfactual_tau": NaN,
+      "R_real": 18.318293329560678,
+      "pixel_composite": 2.8,
+      "control_composite": 2.3333333333333335
+    },
+    {
+      "hidden": 32,
+      "embed": 16,
+      "seed": 4,
+      "compression": "int8",
+      "pixel_mse": 0.002020388060611665,
+      "pixel_ssim": 0.921084293868283,
+      "pixel_nll": 0.9199487272248765,
+      "pixel_lpips": 0.0015285101652054876,
+      "rollout_fvd": 3.699225051420628e-06,
+      "uncertainty_rho": 0.06598719114814866,
+      "uncertainty_ece": 0.0018864676255320274,
+      "return_ece": 0.5106134190304982,
+      "counterfactual_tau": NaN,
+      "R_real": 18.318293329560678
+    },
+    {
+      "hidden": 32,
+      "embed": 32,
+      "seed": 4,
+      "pixel_mse": 0.001977844904695583,
+      "pixel_ssim": 0.9355309058216342,
+      "pixel_nll": 0.9199274556471312,
+      "pixel_lpips": 0.0015980764045396376,
+      "rollout_fvd": 3.954146617146772e-06,
+      "uncertainty_rho": -0.15855492489632408,
+      "uncertainty_ece": 0.0019212000134539652,
+      "return_ece": 0.5524363624530276,
+      "counterfactual_tau": NaN,
+      "R_real": 18.318293329560678,
+      "pixel_composite": 2.2,
+      "control_composite": 2.0
+    },
+    {
+      "hidden": 32,
+      "embed": 32,
+      "seed": 4,
+      "compression": "int8",
+      "pixel_mse": 0.00201627637698057,
+      "pixel_ssim": 0.920362076049236,
+      "pixel_nll": 0.9199466713830815,
+      "pixel_lpips": 0.0015651770387711563,
+      "rollout_fvd": 3.8360853584492e-06,
+      "uncertainty_rho": -0.40057050398042005,
+      "uncertainty_ece": 0.0019061498748892515,
+      "return_ece": 0.5543364653185995,
+      "counterfactual_tau": NaN,
+      "R_real": 18.318293329560678
+    }
+  ],
+  "correlations": {
+    "pixel_mse": {
+      "rho": NaN,
+      "ci_lo": NaN,
+      "ci_hi": NaN,
+      "p_raw": NaN,
+      "n": 3,
+      "p_adj": 1.0
+    },
+    "pixel_ssim": {
+      "rho": NaN,
+      "ci_lo": NaN,
+      "ci_hi": NaN,
+      "p_raw": NaN,
+      "n": 3,
+      "p_adj": 1.0
+    },
+    "pixel_nll": {
+      "rho": NaN,
+      "ci_lo": NaN,
+      "ci_hi": NaN,
+      "p_raw": NaN,
+      "n": 3,
+      "p_adj": 1.0
+    },
+    "pixel_lpips": {
+      "rho": NaN,
+      "ci_lo": NaN,
+      "ci_hi": NaN,
+      "p_raw": NaN,
+      "n": 3,
+      "p_adj": 1.0
+    },
+    "rollout_fvd": {
+      "rho": NaN,
+      "ci_lo": NaN,
+      "ci_hi": NaN,
+      "p_raw": NaN,
+      "n": 3,
+      "p_adj": 1.0
+    },
+    "return_ece": {
+      "rho": NaN,
+      "ci_lo": NaN,
+      "ci_hi": NaN,
+      "p_raw": NaN,
+      "n": 3,
+      "p_adj": 1.0
+    },
+    "counterfactual_tau": {
+      "rho": NaN,
+      "ci_lo": NaN,
+      "ci_hi": NaN,
+      "p_raw": NaN,
+      "n": 3,
+      "p_adj": 1.0
+    },
+    "uncertainty_rho": {
+      "rho": NaN,
+      "ci_lo": NaN,
+      "ci_hi": NaN,
+      "p_raw": NaN,
+      "n": 3,
+      "p_adj": 1.0
+    },
+    "uncertainty_ece": {
+      "rho": NaN,
+      "ci_lo": NaN,
+      "ci_hi": NaN,
+      "p_raw": NaN,
+      "n": 3,
+      "p_adj": 1.0
+    },
+    "pixel_composite": {
+      "rho": NaN,
+      "ci_lo": NaN,
+      "ci_hi": NaN,
+      "p_raw": NaN,
+      "n": 3,
+      "p_adj": 1.0
+    },
+    "control_composite": {
+      "rho": NaN,
+      "ci_lo": NaN,
+      "ci_hi": NaN,
+      "p_raw": NaN,
+      "n": 3,
+      "p_adj": 1.0
+    }
+  },
+  "H1": {
+    "hypothesis": "H1: |rho(pixel_composite, R_real)| < 0.4",
+    "observed_rho": NaN,
+    "threshold": 0.4,
+    "supports_H1": false,
+    "note": "H1 NOT supported: pixel fidelity tracks control utility more than preregistered -- report as a bounded/null-result."
+  },
+  "H2": {
+    "hypothesis": "H2: rho(control_composite, R_real) > 0.6",
+    "observed_rho": NaN,
+    "threshold": 0.6,
+    "supports_H2": false,
+    "note": "H2 NOT supported: the control composite does not track closed-loop return above the preregistered threshold."
+  },
+  "H3": {
+    "hypothesis": "H3: under compression (int8/channel_prune/distill), pixel fidelity degrades slowly while return-calibration and uncertainty alignment degrade faster",
+    "status": "assessable",
+    "compression_lever": "int8",
+    "n_pairs": 3,
+    "reference_ladder_size": 3,
+    "pixel_composite_degradation": 0.5,
+    "control_composite_degradation": 0.8333333333333334,
+    "supports_H3": true,
+    "note": "H3 supported: control/calibration composite degradation exceeds pixel composite degradation under compression."
+  }
+}
