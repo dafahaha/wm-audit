@@ -241,7 +241,7 @@ python -m venv .venv
 pip install -r requirements-lock.txt   # exact CPU pins; torch +cpu wheel via the in-lock PyTorch CPU index (see Environment above)
 pip install -e ".[dev]"
 
-pytest                                  # unit tests + CI smoke (must stay green)
+pytest                                  # 78 tests + CI smoke (must stay green)
 python -m experiments.run_audit         # == --mode smoke: n=6 CI placeholder (CPU, ~6-7 min)
                                         # default output: gitignored .tmp/results_smoke.json;
                                         # it NEVER overwrites the tracked leaderboard/results_smoke.json.

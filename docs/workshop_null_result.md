@@ -145,6 +145,7 @@ Everything needed to re-run the analysis is in the repository.
 - Command: `python -m experiments.run_audit --config configs/audit/main_pixel_nav_full.yaml --mode main --out leaderboard/results_main_pixelnav_200k.json`
 - Machine: 4-core AMD EPYC, 8 GiB RAM, Ubuntu 22.04 container, `torch 2.14.1+cpu`, `torch.cuda.is_available() == False`, four worker processes at one thread each.
 - Determinism: fixed data seed 123, seeds 0–4, bootstrap resamples 2,000. Correlations recompute from the rows to machine precision — the reported ρ values reproduce to 1e-15 from the stored diagnostics, which is how we checked the analysis before writing this.
+- Independently re-derived on a second machine: the committed 30-row partial was re-aggregated from a clean checkout of `main` on a separate Linux box and the output is **byte-identical** to `leaderboard/results_main_cartpole_200k.json` (129 leaf fields, zero mismatches), with the test suite green there (78 tests). The analysis does not depend on the machine that produced it.
 
 The pilot at n = 9 is committed separately (`leaderboard/results_main.json`) and is retained on purpose. It is the run in which five pixel diagnostics collapsed to one rank ordering, and the run in which a 60k-step reward-scaling "win" looked like a 3× improvement before the preregistered 120k budget and a fixed-temperature control arm overturned it as seed noise. Keeping both runs visible is the cheapest available evidence that the analysis pipeline is not tuned to produce favorable output.
 
