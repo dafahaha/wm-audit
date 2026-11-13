@@ -74,7 +74,7 @@
 | 32 | 32 | 4 | float | -9.362 | 0.007 | 1.928 | 0.763 |
 | 32 | 32 | 4 | int8 | -8.117 | 0.007 | 1.930 | 0.759 |
 
-### Preregistered verdicts (main — pixel_nav single-env subset)
+### Preregistered verdicts (main — `pixel_nav`)
 
 | hypothesis | threshold | observed rho | result |
 |---|---|---|---|

@@ -146,7 +146,7 @@ full heteroscedastic per-pixel likelihood.
 
 **1. The H1 "support" is a threshold-rule label, not an established finding.**
 Both runs fire the preregistered threshold rule, and in neither case is that
-evidence significant. On the locked-scale single-env run (n=15),
+evidence significant. On the locked-scale `pixel_nav` run (n=15),
 |ρ(pixel_composite, R_real)| = 0.021 < 0.4, but the percentile-bootstrap 95% CI
 [−0.540, 0.622] crosses zero, p_raw = 0.939, Holm-adj p = 1.000. On the reduced
 pilot (n=9) the same rule fires at |ρ| = 0.317 < 0.4 with CI [−0.947, 0.554],
@@ -159,7 +159,7 @@ fidelity predicts control".
 (n=9) five of the eleven diagnostics — `pixel_mse`, `pixel_nll`,
 `pixel_lpips`†, `rollout_fvd`†, `uncertainty_ece` — produce **identical
 Spearman ρ = 0.3167 and identical p_raw = 0.4064** (same CI [−0.554, 0.947]):
-their 9-element rank vectors are exactly collinear. On the locked-scale single-env
+their 9-element rank vectors are exactly collinear. On the locked-scale `pixel_nav`
 run (n=15) the collinear group shrinks to two diagnostics (`pixel_mse`,
 `pixel_nll`, ρ=0.061, p_raw=0.830, CI [−0.562, 0.612]) — the capacity ladder now
 separates some metrics — but the battery still carries fewer independent signals
@@ -263,7 +263,8 @@ There are **two distinct modes** - do not confuse them:
 |---|---|---|---|---|---|
 | `--mode smoke` | CI / quick sanity placeholder | **n=6** | 2 | 150 | 200 |
 | `--mode main` | the **committed reduced pilot** (`leaderboard/results_main.json`) | **n=9** | 3 | 12000 | 2000 |
-| `--mode main` + `--config configs/audit/main_pixel_nav_full.yaml` | **locked-scale single-env subset** (`leaderboard/results_main_pixelnav_200k.json`); run with `--jobs 4` | **n=15** | 5 | 200000 | 2000 |
+| `--mode main` + `--config configs/audit/main_pixel_nav_full.yaml` | **locked-scale `pixel_nav` MAIN** (`leaderboard/results_main_pixelnav_200k.json`); run with `--jobs 4` | **n=15** | 5 | 200000 | 2000 |
+| same flags + `--config configs/audit/main_cartpole_full.yaml` | **locked-scale `cartpole_swingup` MAIN** (`leaderboard/results_main_cartpole_200k.json`); five seed shards on a runner, merged with `--resume` | **n=15** | 5 | 200000 | 2000 |
 
 To regenerate the reduced pilot numbers (CPU only):
 
@@ -273,7 +274,7 @@ python -m experiments.run_audit --mode main --out leaderboard/results_main.json
 python experiments\make_leaderboard.py   # re-render leaderboard/LEADERBOARD.md from the JSON
 ```
 
-To regenerate the locked-scale single-env MAIN (Linux CPU, ~2 h on 4 cores):
+To regenerate the locked-scale `pixel_nav` MAIN (Linux CPU, ~2 h on 4 cores):
 
 ```bash
 python -m experiments.run_audit --mode main \
@@ -299,7 +300,7 @@ within 1e-5 relative, and the resulting rho within 1e-9.
   2000-resample bootstrap, expect on the order of **~25-35 minutes on a
   comparable CPU**. (For reference, `--mode smoke` measured ~396 s / ~6.6 min on
   this machine.) Treat both numbers as estimates, not guarantees.
-- **Wall-clock (main subset, measured):** the locked-scale single-env run
+- **Wall-clock (`pixel_nav` main, measured):** the locked-scale run
   (15 configs, 4 worker processes) wrote its artifact roughly **~2 h after
   launch** on the 4-core container (workspace clone at 03:06 → results file at
   05:07; the container rotated the process log, so the exact launch timestamp is
@@ -357,11 +358,12 @@ We verified both go red when the underlying math is broken.
 
 WM-Audit is a measurement layer on top of the following world models and
 recent audit-adjacent work. (IDs verified against arXiv abstract pages; the
-numbers in this repo come from two `pixel_nav` runs — the 2026-10-13 CPU reduced
-pilot and the 2026-11-07 locked-scale main (200k steps × 5 seeds × 3 capacities,
-a single-env subset of the preregistered design) — plus a downgraded CI smoke
-placeholder. The 2nd prereg env `dm_control.cartpole_swingup` is not included in
-either run.)
+numbers in this repo come from three locked/reduced runs — the 2026-10-13 CPU
+reduced pilot, the 2026-11-07 locked-scale `pixel_nav` main, and the 2026-11-13
+locked-scale `cartpole_swingup` main, both at 200k steps × 5 seeds × 3
+capacities — plus a downgraded CI smoke placeholder. `cartpole_swingup` is the
+second of the two preregistered environments; it ran on GitHub-hosted runners
+because `dm_control` was not installable in the CPUs this repo targets.)
 
 - **DreamerV3** — D. Hafner, J. Pasukonis, J. Ba, T. Lillicrap.
   *Mastering Diverse Domains through World Models.* arXiv:2301.04104.

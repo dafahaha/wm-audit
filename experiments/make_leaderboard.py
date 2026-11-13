@@ -182,7 +182,7 @@ def _collinear_group(corr, anchor="pixel_mse"):
 
 
 def _main_full_section(data):
-    """Locked-scale MAIN section (single-env subset) from its own committed JSON."""
+    """Locked-scale `pixel_nav` MAIN section from its own committed JSON."""
     meta = data.get("run_meta", {})
     corr = data["correlations"]
     n = next(iter(corr.values()))["n"]
@@ -257,7 +257,7 @@ def _main_full_section(data):
 
 {_rows_table(data, main=True)}
 
-{_main_verdicts(data, title="### Preregistered verdicts (main — pixel_nav single-env subset)")}
+{_main_verdicts(data, title="### Preregistered verdicts (main — `pixel_nav`)")}
 
 Read honestly: the strongest absolute diagnostic-vs-return correlation on this run is
 `{strongest}` (rho={s['rho']:.3f}; p_raw={s['p_raw']:.3f}, Holm-adj p={s['p_adj']:.3f}).
