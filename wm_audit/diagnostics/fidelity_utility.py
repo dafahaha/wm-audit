@@ -80,11 +80,19 @@ def _oriented_ranks(values: Sequence[float], lower_is_better: bool) -> np.ndarra
     ranks (see ``rankdata``).
     """
     v = np.asarray(values, dtype=float).reshape(-1)
-    r = rankdata(v)  # ascending: smallest value -> rank 1
+    out = np.full(v.size, np.nan, dtype=float)
+    finite = np.isfinite(v)
+    n_finite = int(finite.sum())
+    if n_finite == 0:
+        return out
+    # Rank only the measured values. A NaN column used to be handed to
+    # ``rankdata`` anyway, which parked it at the top of the ladder and made an
+    # undefined diagnostic look like the strongest signal in the battery.
+    r = rankdata(v[finite])  # ascending: smallest value -> rank 1
     if lower_is_better:
-        n = v.size
-        r = (n + 1.0) - r  # smallest (best) -> largest rank
-    return r
+        r = (n_finite + 1.0) - r  # smallest (best) -> largest rank
+    out[finite] = r
+    return out
 
 
 def _insertion_rank_oriented(x: float, ref_values: Sequence[float],
@@ -132,13 +140,35 @@ def composite_score(
     """Direction-unified rank composite -> one score per row.
 
     Higher score = better fidelity (pixel) / better control relevance.
+
+    Diagnostics that are undefined (non-finite) for a row are left out of that
+    row's mean instead of being ranked anyway, and the denominator is the
+    number of diagnostics that actually contributed (see
+    ``composite_coverage``). On a fully-measured grid every row uses every
+    diagnostic, so this is identical to the plain ``len(diagnostics)`` mean.
     """
     n = len(rows)
     score = np.zeros(n, dtype=float)
+    count = np.zeros(n, dtype=float)
     for d in diagnostics:
-        vals = [r[d] for r in rows]
-        score += _oriented_ranks(vals, lower_is_better_map[d])
-    return score / float(len(diagnostics))
+        r = _oriented_ranks([row[d] for row in rows], lower_is_better_map[d])
+        ok = np.isfinite(r)
+        score[ok] += r[ok]
+        count[ok] += 1.0
+    return np.divide(score, count, out=np.full(n, np.nan), where=count > 0)
+
+
+def composite_coverage(
+    rows: List[dict],
+    diagnostics: Sequence[str],
+) -> np.ndarray:
+    """How many of ``diagnostics`` were finite (and thus ranked) per row."""
+    n = len(rows)
+    count = np.zeros(n, dtype=float)
+    for d in diagnostics:
+        vals = np.asarray([row[d] for row in rows], dtype=float)
+        count += np.isfinite(vals)
+    return count
 
 
 def pixel_composite_scores(rows: List[dict]) -> np.ndarray:
@@ -168,23 +198,51 @@ def audit_correlations(
 
     ``rows``: list of dicts; each must contain every key in ``diagnostics`` and
     ``return_key``. Returns an ordered dict diagnostic ->
-    ``{rho, ci_lo, ci_hi, p_raw, p_adj, n}``.
+    ``{rho, ci_lo, ci_hi, p_raw, p_adj, n, n_dropped, undefined}``.
+
+    Rows where either the diagnostic or the return is non-finite are dropped for
+    that diagnostic only, and ``n`` / ``n_dropped`` say so. A diagnostic with
+    fewer than three finite pairs is reported as ``rho=None`` with a stated
+    ``undefined`` reason rather than as a correlation invented from NaN ranks;
+    at n=3 the rho is kept but the p-value is honestly ``None``. The Holm
+    correction runs over the diagnostics that do have a p-value, and
+    ``p_adj_family`` records how many that was.
     """
     returns = np.asarray([r[return_key] for r in rows], dtype=float)
     n = returns.size
     out: Dict[str, dict] = {}
-    raw_p = []
+    raw_p: List[float] = []
     for d in diagnostics:
         vals = np.asarray([r[d] for r in rows], dtype=float)
-        rho = _spearman_only(vals, returns)
-        _, lo, hi = bootstrap_ci(vals, returns, _spearman_only,
+        mask = np.isfinite(vals) & np.isfinite(returns)
+        n_valid = int(mask.sum())
+        n_dropped = int(n - n_valid)
+        if n_valid < 3:
+            out[d] = {"rho": None, "ci_lo": None, "ci_hi": None,
+                      "p_raw": None, "p_adj": None, "n": n_valid,
+                      "n_dropped": n_dropped,
+                      "undefined": (f"{n_dropped} of {n} pairs non-finite; "
+                                    f"fewer than 3 finite pairs remain")}
+            raw_p.append(float("nan"))
+            continue
+        xv, yv = vals[mask], returns[mask]
+        rho = _spearman_only(xv, yv)
+        _, lo, hi = bootstrap_ci(xv, yv, _spearman_only,
                                  n_boot=n_boot, ci=ci, seed=seed)
-        p = spearman_pvalue(rho, n)
-        out[d] = {"rho": rho, "ci_lo": lo, "ci_hi": hi, "p_raw": p, "n": n}
+        # Computable at n=3, but a p-value needs n>=4: keep rho, say p unknown.
+        p = spearman_pvalue(rho, n_valid)
+        p_out = float(p) if np.isfinite(p) else None
+        out[d] = {"rho": rho, "ci_lo": lo, "ci_hi": hi, "p_raw": p_out,
+                  "n": n_valid, "n_dropped": n_dropped,
+                  "undefined": (None if p_out is not None else
+                                f"rho computed on n={n_valid} finite pairs; "
+                                f"a p-value needs n>=4")}
         raw_p.append(p)
-    adj = holm_correction(raw_p)
-    for d, a in zip(diagnostics, adj):
-        out[d]["p_adj"] = float(a)
+    defined = [i for i, p in enumerate(raw_p) if np.isfinite(p)]
+    for i, a in zip(defined, holm_correction([raw_p[i] for i in defined])):
+        out[diagnostics[i]]["p_adj"] = float(a)
+    for i, d in enumerate(diagnostics):
+        out[d]["p_adj_family"] = len(defined)
     return out
 
 
@@ -269,11 +327,20 @@ def h3_pair_degradations(
         def _inserted_composite(row: dict, diagnostics: Sequence[str],
                                 lower_is_better_map: Dict[str, bool]) -> float:
             total = 0.0
+            used = 0
             for d in diagnostics:
                 ref = [fr[d] for fr in float_rows]
-                total += _insertion_rank_oriented(row[d], ref,
-                                                  lower_is_better_map[d])
-            return total / float(len(diagnostics))
+                ref = [v for v in ref if np.isfinite(v)]
+                x = row[d]
+                # A diagnostic the compressed model could not measure must not
+                # be scored as the worst possible value on the ladder: that is
+                # a systematic control-side penalty invented by the NaN, not a
+                # degradation caused by compression.
+                if ref and np.isfinite(x):
+                    total += _insertion_rank_oriented(x, ref,
+                                                      lower_is_better_map[d])
+                    used += 1
+            return total / float(used) if used else float("nan")
 
         for r in comp_rows:
             key = (r.get("hidden"), r.get("embed"), r.get("seed"))

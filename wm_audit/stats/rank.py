@@ -115,11 +115,18 @@ def spearmanr(x, y):
     (``p = I_{df/(df+t^2)}(df/2, 1/2)``, matching ``scipy.stats.spearmanr``;
     ``NaN`` when n < 4 or the correlation is undefined). Constant/degenerate
     input returns ``(nan, nan)`` -- never a silent 0.
+
+    Non-finite input also returns ``(nan, nan)``: ``argsort`` would otherwise
+    park NaN at one end of the ladder and return a plausible rho computed from
+    a value that was never measured (an all-NaN diagnostic once "correlated" at
+    -0.04 that way).
     """
     x = np.asarray(x, dtype=float).reshape(-1)
     y = np.asarray(y, dtype=float).reshape(-1)
     n = x.size
     if n < 2 or y.size != n:
+        return float("nan"), float("nan")
+    if not (np.all(np.isfinite(x)) and np.all(np.isfinite(y))):
         return float("nan"), float("nan")
     rx = rankdata(x)
     ry = rankdata(y)
@@ -166,6 +173,8 @@ def kendall_tau(x, y):
     y = np.asarray(y, dtype=float).reshape(-1)
     n = x.size
     if n < 2 or y.size != n:
+        return float("nan")
+    if not (np.all(np.isfinite(x)) and np.all(np.isfinite(y))):
         return float("nan")
     conc = 0
     disc = 0

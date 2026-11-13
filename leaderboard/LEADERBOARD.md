@@ -2,12 +2,13 @@
 
 > Which world-model diagnostics actually predict closed-loop control utility? Lower on pixel metrics = better fidelity.
 
-## Main results — `pixel_nav` single-env subset (2026-11-07)
+## Main results — `pixel_nav` (2026-11-07)
 
-> **Status: single-env subset of the locked preregistered MAIN — NOT the full 2-env main.**
+> **Status: first of the two locked environments, executed at full preregistered scale.**
 > The preregistration asks for 200000 train steps × 5 seeds ×
-> 3 capacity tiers × 2 envs. This run executes `pixel_nav` at the locked
-> scale; the second prereg env (`dm_control.cartpole_swingup`) is **not included** — MuJoCo/EGL unavailable in this Linux CPU container; not installed for this run.
+> 3 capacity tiers × 2 envs. This section executes `pixel_nav`; the
+> second env (`dm_control.cartpole_swingup`) was executed separately on 2026-11-13 and is
+> reported in the next section, so the locked 2-of-2 MAIN is complete.
 >
 > Kept exactly as preregistered: 200000 train steps, 100000 collect steps,
 > seeds [0, 1, 2, 3, 4], capacity tiers [[16, 16], [32, 16], [32, 32]], ensemble_size=3,
@@ -93,16 +94,120 @@ bounded null/negative results per the preregistration's honesty clause, reported
 **Rank-collinearity caveat (n=15).** 2 diagnostics — `pixel_mse`, `pixel_nll` — share identical rho=0.061, p_raw=0.830 and the same CI: one rank pattern, not that many independent confirmations. Multi-diagnostic agreement must not be counted as cross-validation on this run.
 
 
+## Second environment — `dm_control.cartpole_swingup` (15 float rows + int8)
+
+> **Status: second locked environment, executed at the full preregistered scale
+> (2026-11-13). With it, the locked 2-of-2 2-env MAIN is complete.**
+> Kept exactly as preregistered (see `configs/audit/main_cartpole_full.yaml`):
+> 200000 train steps, 100000 collect steps, seeds [0, 1, 2, 3, 4], capacity tiers
+> [[16, 16], [32, 16], [32, 32]], ensemble_size=3, bootstrap=2000, INT8 lever.
+> Run as five seed shards on GitHub-hosted `ubuntu-latest` runners
+> (MuJoCo 4.0.1 via `dm_control`, `MUJOCO_GL=osmesa`, CPU only); shard artifacts
+> are committed under `leaderboard/ci/cartpole_seed{0..4}.json`.
+>
+> **Two diagnostics are not measurable in this environment and are reported as
+> `null`, not as numbers.** Non-finite entries: `counterfactual_tau` in 15/15 float rows; `uncertainty_rho` in 3/15 float rows. `counterfactual_tau`
+> compares oracle and imagined reward on two single 10 ms steps, where `cartpole_swingup`
+> reward is effectively constant across the sampled action pairs, so the tau-b
+> denominator vanishes; `uncertainty_rho` is undefined where the ensemble collapses
+> onto identical predictions at the smallest capacity. Composite coverage
+> (diagnostics actually averaged per row): pixel 5 of
+> 5 everywhere; control 3 rows with 1 of 3, 12 rows with 2 of 3. **H2's control composite is therefore
+> a degraded 1-2-of-3 mean, not the strict preregistered composite.**
+>
+> Reproduce: `python experiments/run_audit.py --config configs/audit/main_cartpole_full.yaml --mode main --resume --out leaderboard/results_main_cartpole_200k.json`, then `python experiments/make_leaderboard.py`.
+
+### Diagnostics vs R_real (float-only, n=15; percentile bootstrap=2000)
+
+| diagnostic | Spearman rho vs R_real | 95% CI | p (raw) | Holm-adj p | n used |
+|---|---|---|---|---|---|
+| pixel_mse | -0.160 | [-0.665, 0.420] | 0.568 | 1.000 | 15 |
+| pixel_ssim | -0.061 | [-0.637, 0.574] | 0.828 | 1.000 | 15 |
+| pixel_nll | -0.160 | [-0.665, 0.420] | 0.568 | 1.000 | 15 |
+| pixel_lpips | -0.184 | [-0.674, 0.355] | 0.512 | 1.000 | 15 |
+| rollout_fvd | -0.216 | [-0.690, 0.310] | 0.439 | 1.000 | 15 |
+| return_ece | -0.525 | [-0.869, 0.004] | 0.044 | 0.443 | 15 |
+| counterfactual_tau | undefined | [undefined, undefined] | undefined | undefined | 0 |
+| uncertainty_rho | -0.327 | [-0.828, 0.307] | 0.300 | 1.000 | 12 |
+| uncertainty_ece | -0.083 | [-0.579, 0.429] | 0.769 | 1.000 | 15 |
+| pixel_composite | +0.130 | [-0.477, 0.685] | 0.645 | 1.000 | 15 |
+| control_composite | +0.301 | [-0.182, 0.668] | 0.275 | 1.000 | 15 |
+
+### Rows (float baseline + INT8 variants)
+
+| hidden | embed | seed | compression | R_real | pixel_mse | return_ece | counterfactual_tau |
+|---|---|---|---|---|---|---|---|
+| 16 | 16 | 0 | float | 22.414 | 0.00202 | 0.702 | undefined |
+| 16 | 16 | 0 | int8 | 22.414 | 0.00202 | 0.702 | undefined |
+| 32 | 16 | 0 | float | 20.026 | 0.00199 | 0.703 | undefined |
+| 32 | 16 | 0 | int8 | 22.414 | 0.00206 | 0.703 | undefined |
+| 32 | 32 | 0 | float | 22.414 | 0.00197 | 0.499 | undefined |
+| 32 | 32 | 0 | int8 | 22.414 | 0.00200 | 0.500 | undefined |
+| 16 | 16 | 1 | float | 5.796 | 0.00202 | 0.716 | undefined |
+| 16 | 16 | 1 | int8 | 5.796 | 0.00202 | 0.716 | undefined |
+| 32 | 16 | 1 | float | 4.035 | 0.00196 | 0.521 | undefined |
+| 32 | 16 | 1 | int8 | 5.796 | 0.00205 | 0.521 | undefined |
+| 32 | 32 | 1 | float | 5.796 | 0.00202 | 0.716 | undefined |
+| 32 | 32 | 1 | int8 | 5.796 | 0.00202 | 0.716 | undefined |
+| 16 | 16 | 2 | float | 4.302 | 0.00202 | 0.716 | undefined |
+| 16 | 16 | 2 | int8 | 9.130 | 0.00202 | 0.716 | undefined |
+| 32 | 16 | 2 | float | 158.788 | 0.00200 | 0.475 | undefined |
+| 32 | 16 | 2 | int8 | 159.405 | 0.00203 | 0.481 | undefined |
+| 32 | 32 | 2 | float | 25.303 | 0.00197 | 0.513 | undefined |
+| 32 | 32 | 2 | int8 | 43.742 | 0.00199 | 0.514 | undefined |
+| 16 | 16 | 3 | float | 22.176 | 0.00202 | 0.707 | undefined |
+| 16 | 16 | 3 | int8 | 22.176 | 0.00202 | 0.707 | undefined |
+| 32 | 16 | 3 | float | 22.176 | 0.00202 | 0.707 | undefined |
+| 32 | 16 | 3 | int8 | 22.176 | 0.00204 | 0.707 | undefined |
+| 32 | 32 | 3 | float | 22.176 | 0.00196 | 0.346 | undefined |
+| 32 | 32 | 3 | int8 | 22.176 | 0.00206 | 0.360 | undefined |
+| 16 | 16 | 4 | float | 18.318 | 0.00202 | 0.698 | undefined |
+| 16 | 16 | 4 | int8 | 18.318 | 0.00202 | 0.698 | undefined |
+| 32 | 16 | 4 | float | 18.318 | 0.00197 | 0.511 | undefined |
+| 32 | 16 | 4 | int8 | 18.318 | 0.00202 | 0.511 | undefined |
+| 32 | 32 | 4 | float | 18.318 | 0.00198 | 0.552 | undefined |
+| 32 | 32 | 4 | int8 | 18.318 | 0.00202 | 0.554 | undefined |
+
+### Preregistered verdicts (second env)
+
+| hypothesis | threshold | observed | result |
+|---|---|---|---|
+| H1 | \|ρ(pixel_composite, R)\| < 0.4 | +0.130 | **THRESHOLD MET — weak / tentative only** (n=15; CI [-0.477, 0.685] crosses zero; p_raw=0.645, Holm-adj p=1.000 → not significant; NOT an established finding) |
+| H2 | ρ(control_composite, R) > 0.6 | +0.301 | **NOT supported** (below threshold; strongest single control diagnostic `return_ece` = -0.525, raw p=0.044, Holm-adj p=0.443) |
+| H3 | control_deg > pixel_deg under INT8 | pixel_deg=1.580, control_deg=1.367 | **NOT supported** (n_pairs=15; direction reverses again — pixel composite degrades *more*) |
+
+Read honestly: this environment **repeats** the navigation result rather than
+rescuing it. H1's rule fires again at a wide interval; H2 misses the 0.6 bar
+again (+0.301); and H3's preregistered ordering fails in the same
+direction as before (1.580 vs 1.367). `counterfactual_tau`
+is unmeasurable here (0 usable pairs) and `uncertainty_rho` is measured
+on 12 of 15 pairs; the Holm family shrinks to 10 tests accordingly.
+
+**Outcome resolution.** The 15 float rows carry only 9 distinct
+`R_real` values, and 2 of 5 seeds show a single value across all capacities (seed 3, 4), so the rank correlations above are orderings over
+fewer effective levels than rows. `composite_coverage` and `outcome_resolution`
+in the JSON state these limits numerically rather than leaving them to prose.
+
+**Aggregation defect fixed before publishing this section.** The first aggregation
+ranked the NaN columns anyway, which manufactured ρ=−0.043 for the all-NaN
+diagnostic, moved H2 to +0.308, and scored unmeasurable compressed rows as the
+worst value on the fixed ladder — reporting control degradation 4.311 and making
+**H3 appear supported**. The numbers above come from the fixed pipeline, which
+drops non-finite pairs, reports `n`/`n_dropped`, leaves unmeasurable diagnostics
+out of the composite mean, and writes `null` instead of RFC-invalid `NaN`.
+
+
 ## Reduced-pilot results — CPU (2026-10-13, historical)
 
 > **Status: historical CPU REDUCED PILOT (3 seeds × 12k steps), kept for
-> reproducibility. Superseded at scale by the main single-env subset above
-> (200k steps × 5 seeds on `pixel_nav`); the full 2-env main remains
-> unexecuted.**
+> reproducibility. Superseded at scale by the locked-scale runs above
+> (200k steps × 5 seeds on `pixel_nav`, then on `dm_control.cartpole_swingup`);
+> both preregistered environments are now executed.**
 > Env: built-in `pixel_nav` only. The 2nd prereg env `dm_control.cartpole_swingup`
 > **cannot install on Windows**: `pip install dm_control` pulls `labmaze`, which has
 > no cp3.13 wheel and requires `bazel` to build from source (`error: command 'bazel'
-> failed`). Device: CPU (venv torch 2.14.1+cpu, `cuda_available=False`; a cu124 install
+> failed`); it was run on GitHub-hosted Linux runners instead (see the section above).
+> Device: CPU (venv torch 2.14.1+cpu, `cuda_available=False`; a cu124 install
 > was attempted but pip keeps the satisfied CPU wheel).
 >
 > What WAS kept exactly as preregistered: the 3 capacity tiers, `bootstrap_resamples=2000`,

@@ -88,32 +88,59 @@ full heteroscedastic per-pixel likelihood.
 - ✅ **Implemented and CI-tested**: stats core (Spearman / Kendall / bootstrap /
   Holm), the diagnostic battery, a deterministic built-in env, replay buffer, a
   tiny CPU RSSM, CEM-MPC close-loop, and INT8 quantization parity.
-- 🧪 **Two runs executed: a CPU reduced pilot (2026-10-13) and a locked-scale
-  single-env MAIN (2026-11-07).** The 2026-11-07 run executes the preregistered
-  200k train steps × 100k collect steps × 5 seeds × 3 capacity tiers on
-  `pixel_nav` (n=15 float rows), INT8 lever, `bootstrap=2000`, on a 4-core CPU
-  container with no GPU. **It is a single-env subset of the locked MAIN, not the
-  full 2-env main**: the second prereg env (`dm_control.cartpole_swingup`) is
-  excluded because MuJoCo/EGL is unavailable in that container. MAIN verdicts
-  (mechanical threshold rule, as preregistered):
-  **H1 threshold met — weak / tentative only**: |ρ(pixel_composite,R)|=0.021<0.4
-  on n=15, yet the 95% CI [−0.540, 0.622] crosses zero, p_raw=0.939, Holm-adj
-  p=1.000 → **not statistically significant, NOT an established finding**;
-  **H2 contradicted at this scale** (ρ(control_composite,R)=−0.102, far below
-  the 0.6 threshold); **H3 reverses** (INT8 pixel-composite degradation 0.780 is
-  *larger* than control-composite degradation 0.422; n_pairs=15). All three are
-  bounded null / negative results reported as such, not falsifications.
+- 🧪 **Three runs executed: a CPU reduced pilot (2026-10-13), a locked-scale
+  `pixel_nav` MAIN (2026-11-07), and the locked-scale `dm_control.cartpole_swingup`
+  MAIN (2026-11-13).** The second MAIN executes the preregistered
+  200k train steps × 100k collect steps × 5 seeds × 3 capacity tiers × INT8 lever
+  (`bootstrap=2000`) as five seed shards on GitHub-hosted `ubuntu-latest` runners
+  (MuJoCo 4.0.1 via `dm_control`, `MUJOCO_GL=osmesa`, no GPU), n=15 float rows.
+  **The locked 2-of-2 2-env MAIN is therefore executed**, not projected.
+  `pixel_nav` verdicts: **H1 threshold met — weak / tentative only**,
+  |ρ(pixel_composite,R)|=0.021<0.4 on n=15, 95% CI [−0.540, 0.622],
+  p_raw=0.939, Holm p=1.000 → **not statistically significant, NOT an
+  established finding**; **H2 contradicted** (ρ(control_composite,R)=−0.102);
+  **H3 reverses** (INT8 pixel degradation 0.780 > control 0.422, n_pairs=15).
+  `cartpole_swingup` verdicts: H1 rule met again at ρ=+0.130, CI
+  [−0.477, +0.685], p_raw=0.645 (equally uninformative); H2 contradicted again
+  at ρ=+0.301 vs the 0.6 threshold — the strongest single control signal is
+  `return_ece` at −0.525 (raw p=0.044, Holm p=0.443); H3 **reverses again**
+  (pixel degradation 1.580 > control 1.367). Both environments agree on H1/H2
+  and both contradict the preregistered H3 direction.
+- ⚠️ **Two of the nine diagnostics are undefined in `cartpole_swingup` and are
+  reported as `null`, not as numbers.** `counterfactual_tau` is NaN in all 30
+  rows (one 10 ms step barely moves the pole, so the oracle rewards over 40 random
+  action pairs are numerically identical and the τb denominator vanishes);
+  `uncertainty_rho` is NaN in 6/30 rows, all at capacity `(16,16)`, where the
+  ensemble collapses onto identical predictions. So H2's `control_composite`
+  mixes 2 of 3 diagnostics in 12 rows and 1 of 3 in three rows — the H2 number
+  above is a **degraded composite, not the strict three-diagnostic one the
+  preregistration names**.
+- 🐞 **A NaN-ranking defect in the aggregation was found while reading that data
+  and fixed before publishing** (commit on `ci/cartpole-full`): `rankdata` used
+  to park non-finite values at one end of the ladder, which manufactured
+  ρ=−0.043 for an all-NaN diagnostic, dragged H2 to +0.308, and scored
+  unmeasurable compressed rows as the worst value on the fixed ladder —
+  reporting control degradation 4.311 and making **H3 look supported**. Correlations
+  now drop non-finite pairs and report `n` / `n_dropped`, composites leave an
+  unmeasurable diagnostic out of that row's mean (`composite_coverage` in the
+  JSON), and the artifact is written with `null` instead of the RFC-invalid
+  `NaN` literal. Pinned by tests in `tests/test_prereg_decisions.py`. The
+  buggy numbers are recorded in the write-up so the size of the artifact is on
+  the record.
+- ⚠️ **Outcome resolution, stated numerically:** the 15 `cartpole_swingup` float
+  rows carry 9 distinct `R_real` values and 2 of 5 seeds show no capacity-dependent
+  variation at all (one configuration returns 158.8 against 4.0–25.3 elsewhere).
+  Rank correlations over that axis have fewer effective levels than rows, which
+  bounds what the H1/H2 intervals can mean. The pipeline emits this as
+  `outcome_resolution` in the JSON and prints a warning when ties dominate.
 - 🧪 **Reduced pilot kept for reproducibility** (`leaderboard/results_main.json`):
   env `pixel_nav`, 3 seeds × 3 capacities (n=9 float rows), `train_steps=12000`,
   H1 threshold met at ρ=−0.317 but CI [−0.947, 0.554] crosses zero (p_adj=1.000),
-  H2 not supported (ρ=0.26), H3 not supported (n_pairs=9). The pilot's Windows
-  constraint (`dm_control` pulls `labmaze`, which needs `bazel`) is why its 2nd
-  env is absent; the main run above was executed on Linux CPU.
-- ⚠️ **Still not the full 2-env locked MAIN**: `dm_control.cartpole_swingup` is
-  not included in either run. No 2-env numbers exist and none are claimed.
-- 📄 **Write-up**: `docs/workshop_null_result.md` — a workshop-style report of the
-  single-env null (abstract, preregistered design, the full 11-statistic table,
-  threats to validity, and the exact reproduction command).
+  H2 not supported (ρ=0.26), H3 not supported (n_pairs=9).
+- 📄 **Write-up**: `docs/workshop_null_result.md` — a workshop-style report
+  covering both environments (abstract, preregistered design, full 11-statistic
+  tables, the degenerate-diagnostic disclosure, threats to validity, and the
+  exact reproduction commands).
 
 ## Limitations (read before citing any verdict)
 
@@ -144,12 +171,17 @@ independent variation between pixel metrics), not sample size alone.
 **3. Already-disclosed scopes that further bound every verdict:** single-step
 feedforward stand-in (GRU state reset every batch — no learned temporal
 dynamics); scalar homoscedastic `pixel_nll`; fixed-filter stand-ins for LPIPS /
-FVD (not learned backbones); `pixel_nav` env only (the second prereg env,
-`dm_control.cartpole_swingup`, could not be installed on either machine).
-The locked-scale run in `leaderboard/results_main_pixelnav_200k.json` is CPU,
-`train_steps=200000`, 5 seeds (prereg values met, n=15 after INT8 exclusion);
-the reduced pilot in `results_main.json` is CPU, `train_steps=12000`, 3 seeds.
-Nothing here is extrapolated to a recurrent world model or to a 2-env MAIN.
+FVD (not learned backbones); two small environments only — `pixel_nav` and
+`cartpole_swingup`. `dm_control` could not be installed in the original CPU
+container (MuJoCo/EGL unavailable there) nor on Windows (`labmaze` needs
+`bazel`), so the second environment was run on GitHub-hosted runners instead;
+that is documented in `configs/audit/main_cartpole_full.yaml`, and the runner
+measurements are in `docs/cartpole_runner_probe.md`.
+The locked-scale `pixel_nav` run in `leaderboard/results_main_pixelnav_200k.json`
+is CPU, `train_steps=200000`, 5 seeds (prereg values met, n=15 after INT8
+exclusion); the reduced pilot in `results_main.json` is CPU,
+`train_steps=12000`, 3 seeds. Nothing here is extrapolated to a recurrent world
+model or to tasks larger than these two.
 
 ## Environment
 

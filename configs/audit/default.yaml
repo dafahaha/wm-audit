@@ -44,15 +44,24 @@ main:
   # The LOCKED-SCALE run (200k train steps x 100k collect steps x 5 seeds x 3
   # capacities, single env pixel_nav) was executed 2026-11-07 via
   # configs/audit/main_pixel_nav_full.yaml with --jobs 4; its artifact is
-  # leaderboard/results_main_pixelnav_200k.json (n=15 float rows). The full
-  # 2-env MAIN is still NOT executed: dm_control.cartpole_swingup was
-  # unavailable in both the Windows and the Linux CPU container.
+  # leaderboard/results_main_pixelnav_200k.json (n=15 float rows). The second
+  # locked env, dm_control.cartpole_swingup, was executed 2026-11-13 via
+  # configs/audit/main_cartpole_full.yaml as five seed shards on GitHub-hosted
+  # ubuntu-latest runners (artifact: leaderboard/results_main_cartpole_200k.json,
+  # n=15 float rows; shard files under leaderboard/ci/). The locked 2-of-2 2-env
+  # MAIN is therefore executed.
+  #
+  # dm_control does NOT install in the Windows venv: `pip install dm_control`
+  # pulls `labmaze`, which has no cp3.13 wheel and requires `bazel` to build from
+  # source (`error: command 'bazel' failed`). It also failed in this 8 GiB CPU
+  # container, but NOT for lack of MuJoCo: a GitHub runner installs dm_control
+  # 1.0.52 / mujoco 4.0.1 and renders through OSMesa at ~11.7 ms per 64x64 step
+  # (docs/cartpole_runner_probe.md). The container's blocker was run length --
+  # it is recycled every few minutes, so a 2-3 h config never finishes there.
   #
   # Deviations in THIS pilot config (all documented, none silent):
-  #   * env: pixel_nav ONLY. The 2nd prereg env dm_control.cartpole_swingup
-  #     CANNOT install on Windows: `pip install dm_control` pulls `labmaze`,
-  #     which has no cp3.13 wheel and requires `bazel` to build from source
-  #     (`error: command 'bazel' failed`). Atari/ale-py is out of prereg scope.
+  #   * env: pixel_nav ONLY. The 2nd prereg env runs from its own config (see
+  #     above); Atari/ale-py is out of prereg scope.
   #   * device: CPU (venv torch 2.14.1+cpu; cuda_available=False). A cu124
   #     install was attempted but pip keeps the already-satisfied CPU wheel;
   #     the models are sub-10k-param RSSMs (batch 64, 256-dim obs) so a GPU

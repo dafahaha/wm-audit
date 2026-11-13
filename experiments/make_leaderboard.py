@@ -22,6 +22,7 @@ MAIN_RES = os.path.join(here, "leaderboard", "results_main.json")
 # (pixel_nav). Kept as its own artifact so the reduced pilot stays reproducible
 # and neither file can silently stand in for the other.
 MAIN_FULL_RES = os.path.join(here, "leaderboard", "results_main_pixelnav_200k.json")
+CARTPOLE_FULL_RES = os.path.join(here, "leaderboard", "results_main_cartpole_200k.json")
 SMOKE_RES = os.path.join(here, "leaderboard", "results_smoke.json")
 out_path = os.path.join(here, "leaderboard", "LEADERBOARD.md")
 
@@ -229,12 +230,13 @@ def _main_full_section(data):
         deg_txt = (f"pixel composite degrades by {pixel_deg:.3f} while the "
                    f"control/calibration composite degrades by only {control_deg:.3f}")
 
-    return f"""## Main results — `{envs_run[0]}` single-env subset ({date})
+    return f"""## Main results — `{envs_run[0]}` ({date})
 
-> **Status: single-env subset of the locked preregistered MAIN — NOT the full 2-env main.**
+> **Status: first of the two locked environments, executed at full preregistered scale.**
 > The preregistration asks for {train_steps} train steps × {len(seeds)} seeds ×
-> {len(caps)} capacity tiers × 2 envs. This run executes `{envs_run[0]}` at the locked
-> scale; the second prereg env (`{envs_missing[0]}`) is **not included** — {missing_reason}.
+> {len(caps)} capacity tiers × 2 envs. This section executes `{envs_run[0]}`; the
+> second env (`{envs_missing[0]}`) was executed separately on 2026-11-13 and is
+> reported in the next section, so the locked 2-of-2 MAIN is complete.
 >
 > Kept exactly as preregistered: {train_steps} train steps, {collect_steps} collect steps,
 > seeds {seeds}, capacity tiers {caps}, ensemble_size={ensemble_size},
@@ -270,11 +272,145 @@ bounded null/negative results per the preregistration's honesty clause, reported
 """
 
 
+def _null_safe(v, spec="{:.3f}"):
+    """Format a statistic that may legitimately be None (not measurable)."""
+    return "undefined" if v is None else spec.format(v)
+
+
+def _cartpole_full_section(data):
+    """Locked-scale second-environment section (dm_control.cartpole_swingup).
+
+    Read straight from the committed JSON so the prose cannot drift from the
+    numbers, including the diagnostics that are undefined in this environment.
+    """
+    corr = data["correlations"]
+    cov = data.get("composite_coverage", {})
+    rows = data["rows"]
+    float_rows = [r for r in rows if r.get("pixel_composite") is not None]
+    n = corr["pixel_composite"]["n"]
+    h1, h2, h3 = data["H1"], data["H2"], data["H3"]
+    pc, cc = corr["pixel_composite"], corr["control_composite"]
+    ece = corr["return_ece"]
+    tau = corr["counterfactual_tau"]
+    unc = corr["uncertainty_rho"]
+    pixel_deg = h3["pixel_composite_degradation"]
+    control_deg = h3["control_composite_degradation"]
+    n_pairs = h3["n_pairs"]
+    fam = corr.get("p_adj_family") or pc.get("p_adj_family")
+
+    ctrl_cov = cov.get("control", {}).get("per_row", [])
+    pix_cov = cov.get("pixel", {}).get("per_row", [])
+    ctrl_counts = {}
+    for c in ctrl_cov:
+        ctrl_counts[int(c)] = ctrl_counts.get(int(c), 0) + 1
+    pix_declared = cov.get("pixel", {}).get("declared", 5)
+    ctrl_declared = cov.get("control", {}).get("declared", 3)
+    cov_txt = ", ".join(f"{cnt} rows with {k} of {ctrl_declared}"
+                        for k, cnt in sorted(ctrl_counts.items()))
+    nonfinite = cov.get("nonfinite_diagnostics", [])
+    nonfinite_txt = "; ".join(
+        f"`{e['diagnostic']}` in {e['float_rows_affected']}/{e['float_rows_total']} float rows"
+        for e in nonfinite) or "none"
+
+    res = data.get("outcome_resolution", {})
+    res_levels = res.get("n_distinct_returns", "?")
+    single = res.get("single_valued_seeds", [])
+    single_txt = (f", and {len(single)} of {res.get('n_seeds', '?')} seeds show a "
+                  f"single value across all capacities (seed {', '.join(str(s) for s in single)})"
+                  if single else "")
+
+    diag_rows = []
+    for d, v in corr.items():
+        diag_rows.append(
+            f"| {d} | {_null_safe(v['rho'], '{:+.3f}')} | "
+            f"[{_null_safe(v['ci_lo'])}, {_null_safe(v['ci_hi'])}] | "
+            f"{_null_safe(v['p_raw'])} | {_null_safe(v['p_adj'])} | {v['n']} |"
+        )
+    table = "\n".join(diag_rows)
+
+    row_lines = []
+    for r in rows:
+        kind = "float" if r.get("pixel_composite") is not None else "int8"
+        row_lines.append(
+            f"| {r['hidden']} | {r['embed']} | {r['seed']} | {kind} | "
+            f"{r['R_real']:.3f} | {r['pixel_mse']:.5f} | "
+            f"{_null_safe(r.get('return_ece'))} | "
+            f"{_null_safe(r.get('counterfactual_tau'))} |"
+        )
+    rows_table = "\n".join(row_lines)
+
+    return f"""## Second environment — `dm_control.cartpole_swingup` ({len(float_rows)} float rows + int8)
+
+> **Status: second locked environment, executed at the full preregistered scale
+> (2026-11-13). With it, the locked 2-of-2 2-env MAIN is complete.**
+> Kept exactly as preregistered (see `configs/audit/main_cartpole_full.yaml`):
+> 200000 train steps, 100000 collect steps, seeds [0, 1, 2, 3, 4], capacity tiers
+> [[16, 16], [32, 16], [32, 32]], ensemble_size=3, bootstrap=2000, INT8 lever.
+> Run as five seed shards on GitHub-hosted `ubuntu-latest` runners
+> (MuJoCo 4.0.1 via `dm_control`, `MUJOCO_GL=osmesa`, CPU only); shard artifacts
+> are committed under `leaderboard/ci/cartpole_seed{{0..4}}.json`.
+>
+> **Two diagnostics are not measurable in this environment and are reported as
+> `null`, not as numbers.** Non-finite entries: {nonfinite_txt}. `counterfactual_tau`
+> compares oracle and imagined reward on two single 10 ms steps, where `cartpole_swingup`
+> reward is effectively constant across the sampled action pairs, so the tau-b
+> denominator vanishes; `uncertainty_rho` is undefined where the ensemble collapses
+> onto identical predictions at the smallest capacity. Composite coverage
+> (diagnostics actually averaged per row): pixel {pix_cov[0] if pix_cov else '?'} of
+> {pix_declared} everywhere; control {cov_txt}. **H2's control composite is therefore
+> a degraded 1-2-of-{ctrl_declared} mean, not the strict preregistered composite.**
+>
+> Reproduce: `python experiments/run_audit.py --config configs/audit/main_cartpole_full.yaml --mode main --resume --out leaderboard/results_main_cartpole_200k.json`, then `python experiments/make_leaderboard.py`.
+
+### Diagnostics vs R_real (float-only, n={n}; percentile bootstrap=2000)
+
+| diagnostic | Spearman rho vs R_real | 95% CI | p (raw) | Holm-adj p | n used |
+|---|---|---|---|---|---|
+{table}
+
+### Rows (float baseline + INT8 variants)
+
+| hidden | embed | seed | compression | R_real | pixel_mse | return_ece | counterfactual_tau |
+|---|---|---|---|---|---|---|---|
+{rows_table}
+
+### Preregistered verdicts (second env)
+
+| hypothesis | threshold | observed | result |
+|---|---|---|---|
+| H1 | \\|ρ(pixel_composite, R)\\| < 0.4 | {pc['rho']:+.3f} | **THRESHOLD MET — weak / tentative only** (n={n}; CI [{pc['ci_lo']:.3f}, {pc['ci_hi']:.3f}] crosses zero; p_raw={pc['p_raw']:.3f}, Holm-adj p={pc['p_adj']:.3f} → not significant; NOT an established finding) |
+| H2 | ρ(control_composite, R) > 0.6 | {cc['rho']:+.3f} | **NOT supported** (below threshold; strongest single control diagnostic `return_ece` = {ece['rho']:+.3f}, raw p={ece['p_raw']:.3f}, Holm-adj p={ece['p_adj']:.3f}) |
+| H3 | control_deg > pixel_deg under INT8 | pixel_deg={pixel_deg:.3f}, control_deg={control_deg:.3f} | **NOT supported** (n_pairs={n_pairs}; direction reverses again — pixel composite degrades *more*) |
+
+Read honestly: this environment **repeats** the navigation result rather than
+rescuing it. H1's rule fires again at a wide interval; H2 misses the 0.6 bar
+again ({cc['rho']:+.3f}); and H3's preregistered ordering fails in the same
+direction as before ({pixel_deg:.3f} vs {control_deg:.3f}). `counterfactual_tau`
+is unmeasurable here ({tau['n']} usable pairs) and `uncertainty_rho` is measured
+on {unc['n']} of {n} pairs; the Holm family shrinks to {fam} tests accordingly.
+
+**Outcome resolution.** The {n} float rows carry only {res_levels} distinct
+`R_real` values{single_txt}, so the rank correlations above are orderings over
+fewer effective levels than rows. `composite_coverage` and `outcome_resolution`
+in the JSON state these limits numerically rather than leaving them to prose.
+
+**Aggregation defect fixed before publishing this section.** The first aggregation
+ranked the NaN columns anyway, which manufactured ρ=−0.043 for the all-NaN
+diagnostic, moved H2 to +0.308, and scored unmeasurable compressed rows as the
+worst value on the fixed ladder — reporting control degradation 4.311 and making
+**H3 appear supported**. The numbers above come from the fixed pipeline, which
+drops non-finite pairs, reports `n`/`n_dropped`, leaves unmeasurable diagnostics
+out of the composite mean, and writes `null` instead of RFC-invalid `NaN`.
+"""
+
+
 def main():
     main_data = _load(MAIN_RES)
     smoke_data = _load(SMOKE_RES)
     main_full_data = _load(MAIN_FULL_RES) if os.path.exists(MAIN_FULL_RES) else None
     main_full_section = _main_full_section(main_full_data) if main_full_data else ""
+    cartpole_data = _load(CARTPOLE_FULL_RES) if os.path.exists(CARTPOLE_FULL_RES) else None
+    cartpole_section = _cartpole_full_section(cartpole_data) if cartpole_data else ""
     n_main = next(iter(main_data["correlations"].values()))["n"]
     n_smoke = next(iter(smoke_data["correlations"].values()))["n"]
     # P3-2: derive the strongest-correlation numbers from the JSON rather than
@@ -295,16 +431,19 @@ def main():
 
 {main_full_section}
 
+{cartpole_section}
+
 ## Reduced-pilot results — CPU (2026-10-13, historical)
 
 > **Status: historical CPU REDUCED PILOT (3 seeds × 12k steps), kept for
-> reproducibility. Superseded at scale by the main single-env subset above
-> (200k steps × 5 seeds on `pixel_nav`); the full 2-env main remains
-> unexecuted.**
+> reproducibility. Superseded at scale by the locked-scale runs above
+> (200k steps × 5 seeds on `pixel_nav`, then on `dm_control.cartpole_swingup`);
+> both preregistered environments are now executed.**
 > Env: built-in `pixel_nav` only. The 2nd prereg env `dm_control.cartpole_swingup`
 > **cannot install on Windows**: `pip install dm_control` pulls `labmaze`, which has
 > no cp3.13 wheel and requires `bazel` to build from source (`error: command 'bazel'
-> failed`). Device: CPU (venv torch 2.14.1+cpu, `cuda_available=False`; a cu124 install
+> failed`); it was run on GitHub-hosted Linux runners instead (see the section above).
+> Device: CPU (venv torch 2.14.1+cpu, `cuda_available=False`; a cu124 install
 > was attempted but pip keeps the satisfied CPU wheel).
 >
 > What WAS kept exactly as preregistered: the 3 capacity tiers, `bootstrap_resamples=2000`,

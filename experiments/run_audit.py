@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import os
 import sys
 
@@ -33,12 +34,34 @@ from wm_audit.diagnostics import (                     # noqa: E402
     audit_correlations,
     prereg_decision_h1, prereg_decision_h2, prereg_decision_h3,
     pixel_composite_scores, control_composite_scores,
+    composite_coverage, PIXEL_DIAGNOSTICS, CONTROL_DIAGNOSTICS,
 )
 
 
 def load_config(path: str) -> dict:
     with open(path, "r", encoding="utf-8") as f:
         return yaml.safe_load(f)
+
+
+def _jsonable(obj):
+    """Recursively convert numpy scalars and non-finite floats for JSON.
+
+    RFC 8259 has no ``NaN`` / ``Infinity`` literals, so an undefined number has
+    to leave as ``null`` (with the reason recorded next to it) instead of as a
+    token that makes ``jq``, node and browsers refuse the whole artifact.
+    """
+    if isinstance(obj, dict):
+        return {k: _jsonable(v) for k, v in obj.items()}
+    if isinstance(obj, (list, tuple)):
+        return [_jsonable(v) for v in obj]
+    if isinstance(obj, (np.floating, float)):
+        f = float(obj)
+        return f if math.isfinite(f) else None
+    if isinstance(obj, np.integer):
+        return int(obj)
+    if isinstance(obj, np.bool_):
+        return bool(obj)
+    return obj
 
 
 def _eval_task(task):
@@ -176,9 +199,27 @@ def main():
     # float capacity ladder ONLY.
     pixel_scores = pixel_composite_scores(float_rows)
     control_scores = control_composite_scores(float_rows)
-    for r, ps, cs in zip(float_rows, pixel_scores, control_scores):
+    pixel_cov = composite_coverage(float_rows, PIXEL_DIAGNOSTICS)
+    control_cov = composite_coverage(float_rows, CONTROL_DIAGNOSTICS)
+    for r, ps, cs, pn, cn in zip(float_rows, pixel_scores, control_scores,
+                                 pixel_cov, control_cov):
         r["pixel_composite"] = float(ps)
         r["control_composite"] = float(cs)
+        r["pixel_composite_n"] = int(pn)
+        r["control_composite_n"] = int(cn)
+        r["pixel_composite_n_declared"] = len(PIXEL_DIAGNOSTICS)
+        r["control_composite_n_declared"] = len(CONTROL_DIAGNOSTICS)
+    nonfinite_diagnostics = []
+    for i, d in enumerate(diagnostics):
+        n_nan = sum(1 for r in float_rows
+                    if not np.isfinite(np.asarray(r[d], dtype=float)))
+        if n_nan:
+            nonfinite_diagnostics.append(
+                {"diagnostic": d, "float_rows_affected": n_nan,
+                 "float_rows_total": len(float_rows)})
+            print(f"! diagnostic {d}: non-finite in {n_nan}/{len(float_rows)} "
+                  f"float rows -- excluded from that row's composite and from "
+                  f"the correlation pool, not ranked as a value.")
 
     corr_diagnostics = list(diagnostics) + ["pixel_composite", "control_composite"]
 
@@ -187,18 +228,58 @@ def main():
     print(f"POOL: float baseline rows only (n={len(float_rows)}); compression rows "
           f"excluded (H3-only)")
     print("=" * 72)
+    # Outcome resolution: Spearman over a heavily tied return is a rank ordering
+    # over very few levels, however many rows the table has. Report it instead of
+    # letting a 15-row pool imply 15 distinguishable outcomes.
+    rets = [float(r[cfg.get("return_key", "R_real")]) for r in float_rows]
+    rets_finite = [x for x in rets if math.isfinite(x)]
+    levels = sorted({round(x, 12) for x in rets_finite})
+    by_seed = {}
+    for r, x in zip(float_rows, rets):
+        by_seed.setdefault(int(r["seed"]), set()).add(round(x, 12))
+    degenerate = [s for s, vals in sorted(by_seed.items()) if len(vals) == 1]
+    outcome_resolution = {
+        "n_rows": len(float_rows),
+        "n_distinct_returns": len(levels),
+        "levels": levels,
+        "single_valued_seeds": degenerate,
+        "n_seeds": len(by_seed),
+    }
+    print(f"\nOutcome resolution: {len(float_rows)} float rows carry "
+          f"{len(levels)} distinct {cfg.get('return_key', 'R_real')} values; "
+          f"{len(degenerate)} of {len(by_seed)} seeds have a single value across "
+          f"all capacities ({degenerate}).")
+    if len(levels) < len(float_rows) / 2:
+        print("  ! the return axis is heavily tied: the correlations above are "
+              "rank orderings over far fewer levels than rows, and a diagnostic "
+              "cannot separate models the outcome never separated.")
+
     res = audit_correlations(float_rows, corr_diagnostics, return_key="R_real",
                              n_boot=cfg.get("bootstrap_resamples", 200),
                              ci=0.95, seed=0)
     print(f"{'diagnostic':<22}{'rho':>8}{'ci_lo':>9}{'ci_hi':>9}{'p_raw':>9}{'p_adj':>9}")
-    for d, v in res.items():
-        print(f"{d:<22}{v['rho']:>8.3f}{v['ci_lo']:>9.3f}{v['ci_hi']:>9.3f}"
-              f"{v['p_raw']:>9.3f}{v['p_adj']:>9.3f}")
 
-    # Preregistered verdicts.
-    h1 = prereg_decision_h1(res["pixel_composite"]["rho"], threshold=0.4,
+    def _f(x, spec=".3f"):
+        return "None" if x is None else format(x, spec)
+
+    for d, v in res.items():
+        flag = "" if v.get("n_dropped", 0) == 0 else f"  (n={v['n']}, dropped {v['n_dropped']})"
+        print(f"{d:<22}{_f(v['rho']):>8}{_f(v['ci_lo']):>9}{_f(v['ci_hi']):>9}"
+              f"{_f(v['p_raw']):>9}{_f(v['p_adj']):>9}{flag}")
+    if any(v["rho"] is None for v in res.values()):
+        print("  rho=None means the diagnostic was not measurable on enough rows "
+              "(see 'undefined' in the JSON); it is not a zero correlation.")
+
+    # Preregistered verdicts. A composite that could not be computed is passed
+    # as NaN so every decision function reports "not supported" instead of
+    # crashing or inventing a value.
+    def _rho(key):
+        v = res[key]["rho"]
+        return float("nan") if v is None else float(v)
+
+    h1 = prereg_decision_h1(_rho("pixel_composite"), threshold=0.4,
                             n=len(float_rows))
-    h2 = prereg_decision_h2(res["control_composite"]["rho"], threshold=0.6)
+    h2 = prereg_decision_h2(_rho("control_composite"), threshold=0.6)
     h3 = prereg_decision_h3(rows)
 
     print("\n" + "=" * 72)
@@ -208,7 +289,19 @@ def main():
         print(f"[{label}]")
         print(json.dumps(dec, indent=2))
 
-    out = {"rows": rows, "correlations": res, "H1": h1, "H2": h2, "H3": h3}
+    out = {
+        "rows": rows,
+        "correlations": res,
+        "H1": h1, "H2": h2, "H3": h3,
+        "composite_coverage": {
+            "pixel": {"declared": len(PIXEL_DIAGNOSTICS),
+                      "per_row": [int(x) for x in pixel_cov]},
+            "control": {"declared": len(CONTROL_DIAGNOSTICS),
+                        "per_row": [int(x) for x in control_cov]},
+            "nonfinite_diagnostics": nonfinite_diagnostics,
+        },
+        "outcome_resolution": outcome_resolution,
+    }
     # Default output is a gitignored scratch path (.tmp/) so a bare
     # `python -m experiments.run_audit` NEVER overwrites the tracked,
     # committed leaderboard/results_smoke.json. Pass --out to write anywhere
@@ -219,7 +312,9 @@ def main():
         out_path = os.path.join(ROOT, ".tmp", f"results_{args.mode}.json")
     os.makedirs(os.path.dirname(out_path), exist_ok=True)
     with open(out_path, "w", encoding="utf-8") as f:
-        json.dump(out, f, indent=2)
+        # RFC 8259 has no NaN/Infinity literals: emit null instead, otherwise
+        # strict readers (jq, node, any browser) reject the whole artifact.
+        json.dump(_jsonable(out), f, indent=2, allow_nan=False)
     print(f"\nWrote results -> {out_path}")
 
 

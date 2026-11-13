@@ -11,12 +11,14 @@ import pytest
 
 from wm_audit.diagnostics import (
     audit_correlations,
+    composite_coverage,
     control_composite_scores,
     h3_pair_degradations,
     pixel_composite_scores,
     prereg_decision_h1,
     prereg_decision_h2,
     prereg_decision_h3,
+    CONTROL_DIAGNOSTICS,
 )
 from wm_audit.stats.rank import spearmanr
 
@@ -435,3 +437,72 @@ def test_h3_identical_compressed_row_inserts_at_baseline_rank_zero_degradation()
     assert d["reference_ladder_size"] == 2
     assert d["pixel_composite_degradation"] == pytest.approx(0.0)
     assert d["control_composite_degradation"] == pytest.approx(0.0)
+
+
+# --- P1: an unmeasurable diagnostic must never be ranked as a value ----------
+# Found on the second-env (dm_control cartpole_swingup) grid: every row had
+# counterfactual_tau = NaN, yet the pipeline happily reported
+# rho = -0.043 for it, and -- worse -- the NaN column still entered
+# control_composite, where NaN dropped to the bottom of the ladder. That is a
+# numerical artifact dressed as a measurement, so these tests pin the fix.
+
+def _four_float_rows(**nan_override):
+    rows = [
+        _pixel_row(1.0, 0.9, 1.0, 0.10, 0.10, return_ece=1.0,
+                   counterfactual_tau=0.9, uncertainty_rho=0.9, R_real=-10.0),
+        _pixel_row(2.0, 0.7, 2.0, 0.15, 0.15, return_ece=2.0,
+                   counterfactual_tau=0.7, uncertainty_rho=0.7, R_real=-40.0),
+        _pixel_row(3.0, 0.5, 3.0, 0.20, 0.20, return_ece=3.0,
+                   counterfactual_tau=0.5, uncertainty_rho=0.5, R_real=-70.0),
+        _pixel_row(4.0, 0.3, 4.0, 0.25, 0.25, return_ece=4.0,
+                   counterfactual_tau=0.3, uncertainty_rho=0.3, R_real=-100.0),
+    ]
+    for r in rows:
+        r.update(nan_override)
+    return rows
+
+
+def test_all_nan_diagnostic_reports_no_rho_instead_of_a_nan_derived_one():
+    rows = _four_float_rows(counterfactual_tau=float("nan"))
+    res = audit_correlations(rows, ["counterfactual_tau"], n_boot=20)
+    v = res["counterfactual_tau"]
+    assert v["rho"] is None            # not -0.04, not 0.0
+    assert v["p_raw"] is None and v["p_adj"] is None
+    assert v["n"] == 0 and v["n_dropped"] == 4
+    assert "non-finite" in v["undefined"]
+
+
+def test_partially_nan_diagnostic_drops_pairs_and_says_how_many():
+    rows = _four_float_rows()
+    rows[2]["uncertainty_rho"] = float("nan")
+    res = audit_correlations(rows, ["uncertainty_rho"], n_boot=20)
+    v = res["uncertainty_rho"]
+    assert v["n"] == 3 and v["n_dropped"] == 1
+    assert np.isfinite(v["rho"])
+
+
+def test_nan_diagnostic_is_left_out_of_the_composite_mean():
+    rows = _four_float_rows(counterfactual_tau=float("nan"))
+    cov = composite_coverage(rows, CONTROL_DIAGNOSTICS)
+    assert set(np.asarray(cov, dtype=int)) == {2}
+    scores = control_composite_scores(rows)
+    assert np.all(np.isfinite(scores))
+    # ordering still follows the two measurable diagnostics (ece + unc_rho)
+    assert scores[0] > scores[3]
+
+
+def test_h3_does_not_invent_control_degradation_from_a_nan_diagnostic():
+    ladder = [
+        _full_row(16, 0, embed=16, mse=1.0, ssim=0.9, nll=1.0, lpips=0.1,
+                  fvd=0.1, ece=1.0, tau=float("nan"), unc_rho=0.9),
+        _full_row(32, 0, embed=16, mse=2.0, ssim=0.5, nll=2.0, lpips=0.2,
+                  fvd=0.2, ece=2.0, tau=float("nan"), unc_rho=0.5),
+        # compressed twin of the 16-row: identical where measurable
+        _full_row(16, 0, embed=16, compression="int8", mse=1.0, ssim=0.9,
+                  nll=1.0, lpips=0.1, fvd=0.1, ece=1.0, tau=float("nan"),
+                  unc_rho=0.9),
+    ]
+    d = prereg_decision_h3(ladder)
+    assert d["status"] == "assessable"
+    assert d["control_composite_degradation"] == pytest.approx(0.0)
+    assert d["pixel_composite_degradation"] == pytest.approx(0.0)

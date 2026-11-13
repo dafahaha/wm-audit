@@ -16,6 +16,10 @@ leaderboard/results_*.json
 !leaderboard/results_main.json
 # Locked-scale single-env MAIN artifact (2026-11-07); rendered as the main section.
 !leaderboard/results_main_pixelnav_200k.json
+# Locked-scale second-environment artifact (2026-11-13, dm_control.cartpole_swingup);
+# rendered as its own section by make_leaderboard.py, so it must be on a fresh clone.
+# Its five per-seed shard inputs are tracked under leaderboard/ci/.
+!leaderboard/results_main_cartpole_200k.json
 # Preserved CI-placeholder history: make_leaderboard.py renders the smoke block
 # from this file, so it must be present on a fresh clone (deterministic rerun).
 !leaderboard/results_smoke.json
