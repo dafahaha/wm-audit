@@ -64,6 +64,18 @@ def _jsonable(obj):
     return obj
 
 
+def _resolve_out_path(mode, out):
+    """Resolve the output path.
+
+    Without ``--out`` the default goes to a gitignored ``.tmp/`` scratch path
+    so a bare invocation NEVER overwrites a committed ``results_*.json``; pass
+    ``--out`` to write elsewhere on purpose.
+    """
+    if out:
+        return out
+    return os.path.join(ROOT, ".tmp", f"results_{mode}.json")
+
+
 def _eval_task(task):
     """Worker entrypoint for one (seed, capacity) config.
 
@@ -124,7 +136,11 @@ def main():
              for seed in seeds for (hidden, embed) in cfg["capacities"]]
 
     rows = []
-    partial_path = os.path.splitext(args.out)[0] + ".partial.jsonl"
+    # Default output is a gitignored scratch path (.tmp/) so a bare
+    # `python -m experiments.run_audit` NEVER overwrites tracked artifacts.
+    out_path = _resolve_out_path(args.mode, args.out)
+    os.makedirs(os.path.dirname(out_path), exist_ok=True)
+    partial_path = os.path.splitext(out_path)[0] + ".partial.jsonl"
     if args.resume and os.path.exists(partial_path):
         with open(partial_path) as fh:
             for line in fh:
@@ -302,14 +318,8 @@ def main():
         },
         "outcome_resolution": outcome_resolution,
     }
-    # Default output is a gitignored scratch path (.tmp/) so a bare
-    # `python -m experiments.run_audit` NEVER overwrites the tracked,
-    # committed leaderboard/results_smoke.json. Pass --out to write anywhere
-    # else (e.g. to regenerate a committed artifact on purpose).
-    if args.out:
-        out_path = args.out
-    else:
-        out_path = os.path.join(ROOT, ".tmp", f"results_{args.mode}.json")
+    # out_path was resolved up front (see _resolve_out_path) so the partial
+    # file lands next to the default .tmp/ scratch output; --out overrides it.
     os.makedirs(os.path.dirname(out_path), exist_ok=True)
     with open(out_path, "w", encoding="utf-8") as f:
         # RFC 8259 has no NaN/Infinity literals: emit null instead, otherwise
