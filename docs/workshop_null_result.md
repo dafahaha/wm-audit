@@ -64,7 +64,7 @@ Float baselines only, n = 15. All eleven statistics, with bootstrap CIs and Holm
 | `rollout_fvd` | −0.2357 | [−0.669, +0.366] | 0.398 | 1.000 |
 | `return_ece` | +0.0214 | [−0.555, +0.576] | 0.940 | 1.000 |
 | `counterfactual_tau` | +0.2504 | [−0.274, +0.688] | 0.368 | 1.000 |
-| `uncertainty_rho` | −0.2179 | [−0.700, +0.366] | 0.435 | 1.000 |
+| `uncertainty_rho` | −0.2179 | [−0.699, +0.366] | 0.435 | 1.000 |
 | `uncertainty_ece` | +0.0071 | [−0.640, +0.568] | 0.980 | 1.000 |
 | `pixel_composite` | +0.0215 | [−0.540, +0.622] | 0.939 | 1.000 |
 | `control_composite` | −0.1021 | [−0.590, +0.436] | 0.717 | 1.000 |
