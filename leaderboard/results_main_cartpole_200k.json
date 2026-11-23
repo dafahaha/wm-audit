@@ -777,5 +777,50 @@
       4
     ],
     "n_seeds": 5
+  },
+  "run_meta": {
+    "label": "locked-scale second prereg env",
+    "date": "2026-11-12",
+    "envs_run": [
+      "dm_control.cartpole_swingup"
+    ],
+    "envs_preregistered": [
+      "pixel_nav",
+      "dm_control.cartpole_swingup"
+    ],
+    "envs_missing": [],
+    "train_steps": 200000,
+    "collect_steps": 100000,
+    "seeds": [
+      0,
+      1,
+      2,
+      3,
+      4
+    ],
+    "capacities": [
+      [
+        16,
+        16
+      ],
+      [
+        32,
+        16
+      ],
+      [
+        32,
+        32
+      ]
+    ],
+    "ensemble_size": 3,
+    "bootstrap_resamples": 2000,
+    "compression_levers": [
+      "int8"
+    ],
+    "device": "CPU (GitHub-hosted ubuntu-latest runner; torch CPU, MuJoCo 4.0.1 via dm_control, MUJOCO_GL=osmesa software rendering)",
+    "machine": "Five seed shards on GitHub-hosted ubuntu-latest runners (4 vCPU / 16 GB); shards concatenated in seed order and aggregated with --resume.",
+    "prereg_status": "second env of the locked 2-env MAIN; 2-of-2 complete together with pixel_nav",
+    "n_float_rows": 15,
+    "n_int8_rows": 15
   }
 }

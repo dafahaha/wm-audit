@@ -1,12 +1,25 @@
 # WM-Audit Preregistration
 # Locked before running the main experiment. Do not tune thresholds after seeing
 # results; deviations must be documented as deviations in the paper.
-# Status: PREREGISTERED. The locked main experiment (200k steps x 5 seeds x
-# 2 envs) has been executed as a SINGLE-ENV SUBSET on pixel_nav (2026-11-07;
-# 30 rows = 15 float + 15 INT8; artifact: leaderboard/results_main_pixelnav_200k.json).
-# The 2nd prereg env (dm_control.cartpole_swingup) was NOT run: MuJoCo/EGL was
-# unavailable in both the Windows machine and the Linux CPU container.
-# Committed reduced-pilot numbers (n=9) are historical, not main results.
+# Status: PREREGISTERED. The locked thresholds, sample size, and Holm correction
+# below were fixed before seeing data and are NOT altered by the amendment.
+#
+# AMENDMENT (2026-11-12, post-data, documentation only): the second prereg env
+# dm_control.cartpole_swingup was subsequently executed at the locked scale on
+# five seed shards on GitHub-hosted ubuntu-latest runners (MuJoCo 4.0.1 via
+# dm_control, MUJOCO_GL=osmesa); artifact
+# leaderboard/results_main_cartpole_200k.json. The locked 2-env MAIN is now
+# 2-of-2 complete.
+#
+# Historical record (pixel_nav collection, 2026-11-07): the locked main
+# (200k steps x 5 seeds x 2 envs) was first executed as a SINGLE-ENV SUBSET on
+# pixel_nav (30 rows = 15 float + 15 INT8; artifact:
+# leaderboard/results_main_pixelnav_200k.json). At that time MuJoCo/EGL was
+# unavailable in both the Windows machine and the Linux CPU container, so the
+# second env was not run. The note below and the pixelnav run_meta describe the
+# state at that collection time; they are retained as a historical record, not
+# the final study status. Committed reduced-pilot numbers (n=9) are historical,
+# not main results.
 
 study: "What You Imagine Is Not What You Get"
 version: "v1-mvp"

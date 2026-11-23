@@ -114,7 +114,11 @@ full heteroscedastic per-pixel likelihood.
   ensemble collapses onto identical predictions. So H2's `control_composite`
   mixes 2 of 3 diagnostics in 12 rows and 1 of 3 in three rows — the H2 number
   above is a **degraded composite, not the strict three-diagnostic one the
-  preregistration names**.
+  preregistration names**. Holm family size reflects measurable statistics:
+  11 on `pixel_nav` (nine diagnostics + two composites) and 10 on
+  `cartpole_swingup` (the all-NaN `counterfactual_tau` is excluded from its
+  family); the other undefined/partial entries are kept as `null` and do not
+  enter a composite.
 - 🐞 **A NaN-ranking defect in the aggregation was found while reading that data
   and fixed before publishing** (commit on `ci/cartpole-full`): `rankdata` used
   to park non-finite values at one end of the ladder, which manufactured

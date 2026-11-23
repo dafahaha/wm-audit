@@ -657,6 +657,7 @@
     "machine": "4-core AMD EPYC, 8 GiB RAM, Ubuntu 22.04 container; 4 worker processes, torch 1 thread each",
     "prereg_status": "single-env subset of the locked MAIN; NOT the full 2-env main",
     "n_float_rows": 15,
-    "n_int8_rows": 15
+    "n_int8_rows": 15,
+    "post_hoc_note": "Recorded at collection time (2026-11-07), this run was a single-env subset. The second prereg env dm_control.cartpole_swingup was later executed at the locked scale on GitHub-hosted runners (2026-11-12; artifact results_main_cartpole_200k.json), so the locked 2-of-2 MAIN is now complete. The envs_missing and prereg_status fields above describe the state when this run was collected, not the final study status."
   }
 }
